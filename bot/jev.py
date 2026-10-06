@@ -86,14 +86,25 @@ def parse_invoice(text: str) -> dict:
 
     def choice(qid):
         a = answers.get(qid, {})
-        return a.get("choice") or a.get("value") or a.get("selected")
+        return (a.get("choice") or a.get("value") or a.get("selected"),
+                a.get("confidence", 0) or 0)
+
+    amount, amount_conf = choice("pick_amount")
+    currency, _ = choice("pick_currency") if currencies else (None, 0)
+    recipient, _ = choice("pick_recipient") if names else (None, 0)
+    intent_p = answers.get("is_invoice_intent", {}).get("noul", 0) or 0
+    # Gate: plain intent, OR hard extraction evidence (amount confidently
+    # picked + currency present). The latter covers terse/test phrasing
+    # like "charge Test 0.1 USD" that scores low on intent prose.
+    is_invoice = intent_p >= 0.5 or (amount_conf >= 0.7 and currency is not None)
 
     return {
-        "is_invoice": (answers.get("is_invoice_intent", {}).get("noul", 0) or 0) >= 0.5,
-        "intent_p": answers.get("is_invoice_intent", {}).get("noul"),
-        "amount": choice("pick_amount"),
-        "currency": choice("pick_currency") if currencies else None,
-        "recipient": choice("pick_recipient") if names else None,
+        "is_invoice": is_invoice,
+        "intent_p": intent_p,
+        "amount": amount,
+        "amount_conf": amount_conf,
+        "currency": currency,
+        "recipient": recipient,
         "has_recipient_p": (answers.get("has_recipient", {}).get("noul")
                             if "has_recipient" in answers else None),
         "raw": text,

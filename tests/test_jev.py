@@ -14,6 +14,13 @@ def test_parse_invoice_sentence():
     assert d["recipient"] and "Marco" in d["recipient"], d
 
 
+def test_parse_terse_test_invoice():
+    d = jev.parse_invoice("charge Test 0.1 USD")
+    assert d["is_invoice"] is True, d
+    assert d["amount"] == "0.1", d
+    assert (d["currency"] or "").upper() == "USD", d
+
+
 def test_parse_non_invoice():
     d = jev.parse_invoice("what's the weather like today")
     assert d["is_invoice"] is False, d
