@@ -113,15 +113,61 @@ async def pay(update: Update, ctx) -> None:
     if not inv:
         await msg.reply_text("Unknown invoice.")
         return
-    from . import x402  # deferred: raises NotImplementedError until wired
-    try:
-        req = x402.create_payment_request(inv)
-        await msg.reply_text(f"Pay {req['pay_url']}")
-    except NotImplementedError:
+    if inv["status"] == "settled":
+        await msg.reply_text(f"{inv['id']} already settled: {inv['settlement_tx']}")
+        return
+    from . import x402
+    wallet = os.environ.get("INVOICE_WALLET", "")
+    if not wallet:
         await msg.reply_text(
-            f"{inv['id']}: USA₮ settlement wiring lands this week. "
-            f"Invoice is minted and trust-screened; payer link activates on x402 hookup."
+            f"{inv['id']} is minted but has no payer address yet "
+            "(operator: set INVOICE_WALLET)."
         )
+        return
+    try:
+        req = x402.create_payment_request(inv, wallet)
+    except ValueError as e:
+        await msg.reply_text(f"Can't price that: {e}")
+        return
+    await msg.reply_text(
+        f"Pay {req['amount_display']} {req['symbol']} on Celo to\n"
+        f"`{req['pay_to']}`\n"
+        f"Token: `{req['asset_contract']}`\n"
+        f"Then run /check {inv['id']}"
+    )
+
+
+async def check(update: Update, ctx) -> None:
+    msg = must_msg(update)
+    if not ctx.args:
+        await msg.reply_text("Usage: /check INV-0001")
+        return
+    inv = store.get(ctx.args[0])
+    if not inv:
+        await msg.reply_text("Unknown invoice.")
+        return
+    from . import x402
+    wallet = os.environ.get("INVOICE_WALLET", "")
+    if not wallet:
+        await msg.reply_text("No payer address configured yet.")
+        return
+    req = x402.create_payment_request(inv, wallet)
+    try:
+        hits = x402.watch_transfers(wallet, req["symbol"],
+                                    min_atomic=req["amount_atomic"])
+    except Exception as e:  # noqa: BLE001
+        log.exception("watch failed")
+        await msg.reply_text(f"Chain lookup hiccup ({e}). Try /check again.")
+        return
+    if not hits:
+        await msg.reply_text(
+            f"{inv['id']}: no {req['symbol']} received yet. "
+            f"Send {req['amount_display']} {req['symbol']} to `{wallet}`, then /check again."
+        )
+        return
+    inv = store.mark_settled(inv["id"], hits[0]["tx"])
+    assert inv is not None
+    await msg.reply_text(f"{inv['id']} SETTLED ✅\nTx: `{hits[0]['tx']}`")
 
 
 async def receipt(update: Update, ctx) -> None:
@@ -149,6 +195,7 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("new", new_invoice))
     app.add_handler(CommandHandler("pay", pay))
+    app.add_handler(CommandHandler("check", check))
     app.add_handler(CommandHandler("receipt", receipt))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, new_invoice))
