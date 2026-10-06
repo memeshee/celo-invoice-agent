@@ -57,14 +57,66 @@ def preview(sell: str, buy: str, sell_amount_atomic: str) -> dict:
         return json.load(r)
 
 
+def taker_proof(owner_key: str) -> dict:
+    """Keyless auth: EIP-712 TakerControl signature, valid ~12h.
+
+    Returns {"taker", "proof"} — pass proof as takerProof in /request.
+    Domain per docs: 'Textile Taker Control v1'.
+    """
+    try:
+        from eth_account import Account
+        from eth_account.messages import encode_typed_data
+    except ImportError as e:
+        raise RuntimeError("pip install eth-account for signing") from e
+    import time
+    import os
+    acct = Account.from_key(owner_key)
+    full = {
+        "types": {
+            "EIP712Domain": [
+                {"name": "name", "type": "string"},
+                {"name": "version", "type": "string"},
+                {"name": "chainId", "type": "uint256"},
+            ],
+            "TakerControl": [
+                {"name": "taker", "type": "address"},
+                {"name": "chainId", "type": "uint256"},
+                {"name": "nonce", "type": "bytes32"},
+                {"name": "issuedAt", "type": "uint256"},
+            ],
+        },
+        "primaryType": "TakerControl",
+        "domain": {"name": "Textile Taker Control", "version": "1",
+                   "chainId": CELO_CHAIN_ID},
+        "message": {
+            "taker": acct.address,
+            "chainId": CELO_CHAIN_ID,
+            "nonce": os.urandom(32),
+            "issuedAt": int(time.time() * 1000),
+        },
+    }
+    signed = acct.sign_message(encode_typed_data(full_message=full))
+    return {
+        "taker": acct.address,
+        "proof": {
+            "nonce": "0x" + full["message"]["nonce"].hex(),
+            "issuedAt": full["message"]["issuedAt"],
+            "signature": "0x" + signed.signature.hex(),
+        },
+    }
+
+
 def request_quote(sell: str, buy: str, sell_amount_atomic: str,
-                  taker: str) -> dict:
-    """Firm quote. NEEDS partner key or takerProof — UNTESTED without one."""
-    return _post("/rfq/request", {
+                  taker: str, taker_proof: dict | None = None) -> dict:
+    """Firm quote. Keyless via taker_proof= or partner TEXTILE_API_KEY."""
+    body = {
         "chainId": CELO_CHAIN_ID, "sellToken": TOKENS[sell],
         "buyToken": TOKENS[buy], "sellAmount": str(sell_amount_atomic),
         "taker": taker,
-    })
+    }
+    if taker_proof:
+        body["takerProof"] = taker_proof
+    return _post("/rfq/request", body)
 
 
 def submit(rfq_id: str, tx_hash: str, claim: str | None = None) -> dict:

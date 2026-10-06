@@ -52,6 +52,24 @@ def test_watch_finds_known_settlement():
     assert "0x0d362780feaa31c632f3ead6b09d55ab9bcc53d5c5c649520d3fa668d6648929" in txs, out
 
 
+def test_textile_takerproof_auth():
+    # Live control: proof must pass AUTH (never 401). Funds errors are fine —
+    # they prove the signature verified and only the balance check fired.
+    import re
+    import urllib.error
+    key = re.search(r"AGENT_WALLET_KEY=(\S+)", open(".env").read())
+    if not key:
+        pytest.skip("no agent key")
+    tp = textile.taker_proof(key.group(1))
+    assert tp["taker"].startswith("0x") and len(tp["proof"]["signature"]) == 132
+    try:
+        textile.request_quote("USDT", "USDC", "10000", tp["taker"], tp["proof"])
+    except urllib.error.HTTPError as e:
+        assert e.code != 401, "takerProof signature rejected"
+        body = e.read().decode()
+        assert "insufficient" in body or "funds" in body, body
+
+
 def test_watch_empty_window_shape():
     # Narrow window at chain head: proves RPC + log path works, no funds needed.
     w3 = x402._w3()
