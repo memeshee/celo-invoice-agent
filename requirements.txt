@@ -1,3 +1,5 @@
 python-telegram-bot>=21.0
 web3>=7.0
 python-dotenv>=1.0
+x402>=2.25.0
+requests>=2.31

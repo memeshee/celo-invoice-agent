@@ -89,8 +89,109 @@ def sign_eip3009(owner_key: str, token: str, name: str, version: str,
         },
     }
     signed = acct.sign_message(encode_typed_data(full_message=full))
+    # Packed 65-byte signature as the x402 exact scheme expects.
+    v_hex = f"{signed.v:02x}" if signed.v < 30 else f"{signed.v - 27:02x}"
+    packed = "0x" + signed.r.to_bytes(32, "big").hex() \
+        + signed.s.to_bytes(32, "big").hex() + v_hex
     return {"v": signed.v, "r": hex(signed.r), "s": hex(signed.s),
+            "signature": packed,
             "signer": acct.address,
             "auth": {"to": to_addr, "value": value,
                      "validAfter": valid_after, "validBefore": valid_before,
                      "nonce": nonce.hex()}}
+
+
+CELO_NETWORK = "eip155:42220"
+CELO_CHAIN_ID = 42220
+
+
+def _agent_key(explicit: str | None = None) -> str:
+    if explicit:
+        return explicit
+    import os
+    import re
+    from pathlib import Path
+    key = os.environ.get("AGENT_WALLET_KEY", "").strip()
+    if key:
+        return key
+    m = re.search(r"AGENT_WALLET_KEY=(\S+)",
+                  Path(".env").read_text() if Path(".env").exists() else "")
+    if m:
+        return m.group(1)
+    raise RuntimeError("AGENT_WALLET_KEY not set (env or .env)")
+
+
+class ExactCeloScheme:
+    """x402 exact/EVM signer for Celo. Code signs, server settles.
+
+    Registered for eip155:42220 on an x402ClientSync; the requests adapter
+    then answers 402s automatically. Needs USDC in the agent wallet.
+    """
+    scheme = "exact"
+
+    def __init__(self, owner_key: str | None = None):
+        self._key = _agent_key(owner_key)
+
+    def create_payment_payload(self, requirements) -> dict:
+        if requirements.network != CELO_NETWORK:
+            raise ValueError(f"not a Celo leg: {requirements.network}")
+        import time
+        extra = requirements.extra or {}
+        now = int(time.time())
+        sig = sign_eip3009(
+            self._key, requirements.asset,
+            extra.get("name", "USDC"), extra.get("version", "2"),
+            CELO_CHAIN_ID, requirements.pay_to, int(requirements.amount),
+            now - 60, now + int(requirements.max_timeout_seconds or 300),
+            __import__("os").urandom(32))
+        return {
+            "authorization": {
+                "from": sig["signer"],
+                "to": requirements.pay_to,
+                "value": str(int(requirements.amount)),
+                "validAfter": str(sig["auth"]["validAfter"]),
+                "validBefore": str(sig["auth"]["validBefore"]),
+                "nonce": "0x" + sig["auth"]["nonce"],
+            },
+            "signature": sig["signature"],
+        }
+
+
+def paid_session(owner_key: str | None = None, max_per_call_usd: float = 1.0):
+    """requests.Session that pays Celo x402 402s from the agent wallet."""
+    import requests
+    from x402 import max_amount, prefer_network, x402ClientSync
+    from x402.http.clients.requests import wrapRequestsWithPayment
+    client = x402ClientSync()
+    client.register_policy(prefer_network(CELO_NETWORK))
+    client.register_policy(max_amount(int(max_per_call_usd * 1_000_000)))
+    client.set_spend_controls({
+        "allowed_assets": [{
+            "network": CELO_NETWORK,
+            "asset": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
+            "max_amount_per_payment": str(int(max_per_call_usd * 1_000_000)),
+        }],
+    })
+    client.register(CELO_NETWORK, ExactCeloScheme(_agent_key(owner_key)))
+    return wrapRequestsWithPayment(requests.Session(), client)
+
+
+def pay_and_call(url: str, params: dict | None = None,
+                 owner_key: str | None = None) -> dict:
+    """GET url (params as query), auto-paying a Celo-leg 402. Returns JSON.
+
+    Raises RuntimeError("NO_USDC") when the wallet can't cover the ask —
+    fund it with a little USDC on Celo and retry.
+    """
+    import requests
+    s = paid_session(owner_key)
+    try:
+        r = s.get(url, params=params or {}, timeout=90)
+    except Exception as e:
+        if "USDC" in str(e) or "balance" in str(e).lower():
+            raise RuntimeError("NO_USDC: fund the agent wallet and retry") from e
+        raise
+    if r.status_code == 402:
+        raise RuntimeError("STILL_402: no Celo leg accepted or settle failed")
+    r.raise_for_status()
+    return r.json()
