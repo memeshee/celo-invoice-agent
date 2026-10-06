@@ -115,18 +115,21 @@ def watch_transfers(pay_to: str, symbol: str = "USAT",
     to_b = head if isinstance(to_block, str) else int(to_block)
     from_b = max(0, to_b - 5000) if isinstance(from_block, str) else int(from_block)
     padded = "0x" + "0" * 24 + pay_to.lower().replace("0x", "")
-    # Forno rejects null topic wildcards, so fetch all Transfers in the
-    # window and filter on topic[2] (to) client-side. Keep windows narrow.
+    # Forno rejects ALL topic filters (even flat single-topic arrays), so pull
+    # address-only logs in a narrow window and filter signature + recipient
+    # client-side. Keep windows narrow.
     logs = w3.eth.get_logs({
         "address": ASSETS[symbol]["asset"],
-        "topics": [TRANSFER_TOPIC],
         "fromBlock": from_b,
         "toBlock": to_b,
     })
     out = []
     for lg in logs:
         topics = lg.get("topics", []) if isinstance(lg, dict) else lg["topics"]
+        sig = topics[0].hex() if len(topics) > 0 else ""
         to_topic = topics[2].hex() if len(topics) > 2 else ""
+        if sig.lower() != TRANSFER_TOPIC.lower():
+            continue
         if to_topic.lower() != padded.lower():
             continue
         value = int(lg["data"].hex(), 16) if isinstance(lg["data"], bytes) \

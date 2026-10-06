@@ -43,10 +43,13 @@ def test_payment_request_shape():
 
 
 def test_watch_empty_window_shape():
-    # Empty far-past window: proves RPC + log path works, no funds needed.
+    # Narrow window at chain head: proves RPC + log path works, no funds needed.
+    w3 = x402._w3()
+    head = w3.eth.block_number
+    assert head > 30_000_000, head  # Celo mainnet sanity
     out = x402.watch_transfers(
         "0x000000000000000000000000000000000000dEaD",
-        from_block=1, to_block=5)
+        from_block=head - 2, to_block=head)
     assert isinstance(out, list)
 
 
