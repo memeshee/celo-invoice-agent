@@ -42,6 +42,16 @@ def test_payment_request_shape():
     assert req["chain"] == "eip155:42220"
 
 
+def test_watch_finds_known_settlement():
+    # Positive control: 0.1 USAT agent -> invoice wallet, mined block 79408890.
+    # Locks the 0x-prefix normalization (empty-window tests can't catch it).
+    out = x402.watch_transfers(
+        "0x86E95581E41946ED84956433a8a9c836bCbA636c", "USAT",
+        min_atomic=100000, from_block=79408885, to_block=79408895)
+    txs = [h["tx"].lower() for h in out]
+    assert "0x0d362780feaa31c632f3ead6b09d55ab9bcc53d5c5c649520d3fa668d6648929" in txs, out
+
+
 def test_watch_empty_window_shape():
     # Narrow window at chain head: proves RPC + log path works, no funds needed.
     w3 = x402._w3()

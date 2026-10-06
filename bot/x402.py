@@ -48,7 +48,22 @@ ASSETS = {
              "method": "permit2"},
 }
 
-TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4f5b3e"
+# USAT on Celo emits a NON-STANDARD Transfer event (observed live:
+# 440/544 USAT logs in a 2000-block window use ...f523b3ef, plus
+# AuthorizationUsed ...79b10a5 and Approval ...c8c7c3b925). Its topic-0
+# shares the ddf252ad prefix but differs in the tail — never assume
+# ERC-20 Transfer topic for this token. USDT/USDC use the standard sig.
+TRANSFER_TOPIC_STD = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4f5b3e"
+TRANSFER_TOPIC_USAT = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+
+TRANSFER_TOPICS = {
+    "USAT": (TRANSFER_TOPIC_USAT, TRANSFER_TOPIC_STD),
+    "USDT": (TRANSFER_TOPIC_STD,),
+    "USDC": (TRANSFER_TOPIC_STD,),
+    "wARS": (TRANSFER_TOPIC_STD,),
+    "wBRL": (TRANSFER_TOPIC_STD,),
+    "wCOP": (TRANSFER_TOPIC_STD,),
+}
 
 
 def _get(path: str) -> dict:
@@ -124,18 +139,20 @@ def watch_transfers(pay_to: str, symbol: str = "USAT",
         "toBlock": to_b,
     })
     out = []
+    want = TRANSFER_TOPICS.get(symbol, (TRANSFER_TOPIC_STD,))
     for lg in logs:
         topics = lg.get("topics", []) if isinstance(lg, dict) else lg["topics"]
-        sig = topics[0].hex() if len(topics) > 0 else ""
-        to_topic = topics[2].hex() if len(topics) > 2 else ""
-        if sig.lower() != TRANSFER_TOPIC.lower():
+        # HexBytes.hex() has no 0x prefix — normalize before comparing.
+        sig = ("0x" + topics[0].hex()) if len(topics) > 0 else ""
+        to_topic = ("0x" + topics[2].hex()) if len(topics) > 2 else ""
+        if sig.lower() not in [s.lower() for s in want]:
             continue
         if to_topic.lower() != padded.lower():
             continue
         value = int(lg["data"].hex(), 16) if isinstance(lg["data"], bytes) \
             else int(lg["data"], 16)
         if value >= min_atomic:
-            out.append({"tx": lg["transactionHash"].hex(), "value": value})
+            out.append({"tx": "0x" + lg["transactionHash"].hex(), "value": value})
     return out
 
 
