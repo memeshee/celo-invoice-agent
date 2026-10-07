@@ -1,0 +1,30 @@
+{
+ "paid_usdc_atomic": 10000,
+ "network": "eip155:42220",
+ "response": {
+  "query": "Ripio wFIAT Celo x402 LatAm corridors",
+  "count": 2,
+  "results": [
+   {
+    "title": "Ripio Launches wFIAT Stablecoins on Celo with No-Cost On-/Off-Ramps - Blockchain.News",
+    "url": "https://blockchain.news/news/ripio-wfiat-stablecoins-celo-integration",
+    "description": "Ripio expands its Latin American stablecoin portfolio with wFIAT integration on Celo, offering no-cost on-/off-ramps and enabling real-world use cases.",
+    "age": "August 1, 2026",
+    "publishedAt": "2026-08-01T08:55:34.000Z"
+   },
+   {
+    "title": "Ripio Deploys wFIAT Stack on Celo with No Cost On-/Off-Ramps, Expanding the Leading Stablecoin Network\u2019s Ecosystem with Latin American Local Digital Currencies | by Celo Core Co. | Jul, 2026 | The Celo Blog",
+    "url": "https://blog.celo.org/ripio-deploys-wfiat-stack-on-celo-with-no-cost-on-off-ramps-expanding-the-leading-stablecoin-9f801b82b899?gi=76a8e16fa0be",
+    "description": "Global Head of Stablecoins. \u201cRipio has delivered on that same thesis at scale across Latin America, introducing the benefits of onchain finance to millions. Bringing wFIAT to Celo is a key unlock for the ecosystem\u2019s growing onchain FX, remittance corridors, and more.\u201d",
+    "age": "July 31, 2026",
+    "publishedAt": "2026-07-31T20:31:48.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ }
+}
