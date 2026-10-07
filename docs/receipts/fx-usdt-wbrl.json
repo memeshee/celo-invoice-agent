@@ -1,0 +1,9 @@
+{
+ "pair": "USDT->wBRL",
+ "sell_atomic": "1000000",
+ "buy_wbrl": "5.00610434711663",
+ "approval_tx": "0xf0f0f10f5713ccf540017e0f913658162dddd8dc767395256fd145b90530c90d",
+ "swap_tx": "0xcac8b05db8899954f2e5a920d842ebca448d8e5ebc2eadc6c4096e0392eec9e0",
+ "forward_tx": "0xfed8a8d4be34f7ce25e60a8ac1277a97b581b9d8a033a987cab18fff1689cc16",
+ "final_holder": "primary 0x86E9"
+}
