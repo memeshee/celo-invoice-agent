@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-08",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Celo x402 facilitator agent payments",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 279790,
+ "usdc_after_atomic": 269790,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.27979,
+ "usdc_after": 0.26979,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Celo x402 facilitator agent payments",
+  "count": 2,
+  "results": [
+   {
+    "title": "x402: Agent Payments - Celo Docs",
+    "url": "https://docs.celo.org/build-on-celo/build-with-ai/x402",
+    "description": "Server delivers resource - Requested content returned with payment receipt \u00b7 Celo runs its own hosted x402 facilitator, built on the open-source x402-rs implementation. It is the recommended default for accepting x402 payments on Celo.",
+    "age": "5 days ago",
+    "publishedAt": "2026-10-02T12:39:00.000Z"
+   },
+   {
+    "title": "USA\u20ae Agentic Payments Are Now Live on Celo\u2019s Native x402 Facilitator | by Celo Core Co. | Sep, 2026 | The Celo Blog",
+    "url": "https://blog.celo.org/usa-agentic-payments-are-now-live-on-celos-native-x402-facilitator-dbb77c731df8?gi=ce5d930d5f2a",
+    "description": "USA\u20ae Agentic Payments Are Now Live on Celo\u2019s Native x402 Facilitator Agents on Celo can now pay with the US Dollar-backed stablecoin issued by Anchorage and supported by Tether, the sixth \u2026",
+    "age": "1 week ago",
+    "publishedAt": "2026-09-30T12:57:56.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0x31c6794a032787b138ac0da04e86df17925231b15e7539a732d690dbaab969aa",
+ "settlement_block": 79499074
+}
