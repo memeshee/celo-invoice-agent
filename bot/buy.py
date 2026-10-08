@@ -6,14 +6,31 @@ no account. pay_and_call() builds the EIP-3009 authorization the 402 demands;
 broadcast + facilitator settle need a funded key — UNTESTED, flagged at runtime.
 
 Verified live 2026-10-07: /api/pricing ok (Celo listed), /api/find?q= works.
+
+Security fixes (audit run-1):
+- peer-controlled-authorization-validity-window: the signed authorization's
+  validBefore is now clamped to a local maximum instead of trusting the peer's
+  max_timeout_seconds (observed: a peer could ask for ~31.7 years).
+- unbounded-aggregate-x402-spend: the machine-pay path now keeps a spend
+  ledger with a total and a per-host budget and records every issued
+  authorization, instead of caps that only apply per payment.
 """
 
 import json
+import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 BASE = "https://agent402.tools"
+
+# Local maxima for the machine-pay path.
+MAX_AUTH_SECONDS = int(os.environ.get("X402_MAX_AUTH_SECONDS", "300"))
+MAX_TOTAL_USD = float(os.environ.get("X402_MAX_TOTAL_USD", "10"))
+MAX_PER_HOST_USD = float(os.environ.get("X402_MAX_PER_HOST_USD", "2"))
+SPEND_LEDGER = os.environ.get("X402_SPEND_LEDGER", "spend_ledger.json")
 
 
 def _get(path: str) -> dict:
@@ -44,6 +61,87 @@ def call_free(slug_or_path: str, params: dict | None = None,
             return {"status": 402,
                     "payment_offer": json.loads(e.read().decode() or "{}")}
         raise
+
+
+# --------------------------------------------------------------- spend ledger
+# The per-payment caps below bound one payment. Without the ledger below there
+# is no bound at all across calls: a peer that answers 402 repeatedly, or fails
+# after taking the signature, keeps a fresh settleable authorization each time.
+
+def _ledger_load() -> dict:
+    try:
+        with open(SPEND_LEDGER) as fh:
+            db = json.load(fh)
+    except (FileNotFoundError, json.JSONDecodeError):
+        db = {}
+    db.setdefault("total_usd", 0.0)
+    db.setdefault("hosts", {})
+    db.setdefault("issued", {})
+    return db
+
+
+def _ledger_save(db: dict) -> None:
+    tmp = SPEND_LEDGER + ".tmp"
+    with open(tmp, "w") as fh:
+        json.dump(db, fh, indent=2)
+    os.replace(tmp, SPEND_LEDGER)
+
+
+def _host(url: str) -> str:
+    return urllib.parse.urlsplit(url).netloc.lower()
+
+
+def spend_gate(url: str, amount_atomic: int) -> None:
+    """Raise before signing when this payment would exceed a budget."""
+    if amount_atomic <= 0:
+        raise RuntimeError(f"SPEND_BUDGET: non-positive amount {amount_atomic}")
+    usd = amount_atomic / 1_000_000
+    db = _ledger_load()
+    if db["total_usd"] + usd > MAX_TOTAL_USD:
+        raise RuntimeError(
+            f"SPEND_BUDGET: total budget exhausted ({db['total_usd']:.2f}/{MAX_TOTAL_USD:.2f} USD)")
+    spent = float(db["hosts"].get(_host(url), 0.0))
+    if spent + usd > MAX_PER_HOST_USD:
+        raise RuntimeError(
+            f"SPEND_BUDGET: host budget exhausted for {_host(url)} ({spent:.2f}/{MAX_PER_HOST_USD:.2f} USD)")
+
+
+def spend_record(url: str, amount_atomic: int, nonce: str | None = None) -> None:
+    """Record an issued authorization so outstanding claims stay visible."""
+    usd = amount_atomic / 1_000_000
+    db = _ledger_load()
+    db["total_usd"] = round(db["total_usd"] + usd, 6)
+    db["hosts"][_host(url)] = round(float(db["hosts"].get(_host(url), 0.0)) + usd, 6)
+    db["issued"][nonce or f"unknown-{int(time.time() * 1000)}"] = {
+        "url": url, "amount_atomic": amount_atomic, "at": int(time.time()),
+    }
+    _ledger_save(db)
+
+
+def _hook_amount(event) -> int | None:
+    """Atomic amount in an x402 payment-creation event, when readable."""
+    for attr in ("selected_requirements", "requirements", "payment_requirements"):
+        req = getattr(event, attr, None)
+        amount = getattr(req, "amount", None) if req is not None else None
+        if amount is not None:
+            return int(amount)
+    payload = getattr(event, "payment_payload", None)
+    body = getattr(payload, "payload", None) if payload is not None else None
+    if isinstance(body, dict):
+        auth = body.get("authorization") or {}
+        if auth.get("value") is not None:
+            return int(auth["value"])
+    return None
+
+
+def _hook_nonce(event) -> str | None:
+    payload = getattr(event, "payment_payload", None)
+    body = getattr(payload, "payload", None) if payload is not None else None
+    if isinstance(body, dict):
+        auth = body.get("authorization") or {}
+        if auth.get("nonce") is not None:
+            return str(auth["nonce"])
+    return None
 
 
 def sign_eip3009(owner_key: str, token: str, name: str, version: str,
@@ -114,10 +212,11 @@ def _agent_key(explicit: str | None = None) -> str:
     key = os.environ.get("AGENT_WALLET_KEY", "").strip()
     if key:
         return key
-    m = re.search(r"AGENT_WALLET_KEY=(\S+)",
-                  Path(".env").read_text() if Path(".env").exists() else "")
+    m = re.search(r"^\s*AGENT_WALLET_KEY=(\S+)\s*$",
+                  Path(".env").read_text() if Path(".env").exists() else "",
+                  re.MULTILINE)
     if m:
-        return m.group(1)
+        return m.group(1).strip("\"'")
     raise RuntimeError("AGENT_WALLET_KEY not set (env or .env)")
 
 
@@ -138,11 +237,15 @@ class ExactCeloScheme:
         import time
         extra = requirements.extra or {}
         now = int(time.time())
+        # The peer chooses max_timeout_seconds; never sign a window longer than
+        # our own maximum.
+        window = min(int(requirements.max_timeout_seconds or MAX_AUTH_SECONDS),
+                     MAX_AUTH_SECONDS)
         sig = sign_eip3009(
             self._key, requirements.asset,
             extra.get("name", "USDC"), extra.get("version", "2"),
             CELO_CHAIN_ID, requirements.pay_to, int(requirements.amount),
-            now - 60, now + int(requirements.max_timeout_seconds or 300),
+            now - 60, now + window,
             __import__("os").urandom(32))
         return {
             "authorization": {
@@ -157,8 +260,14 @@ class ExactCeloScheme:
         }
 
 
-def paid_session(owner_key: str | None = None, max_per_call_usd: float = 1.0):
-    """requests.Session that pays Celo x402 402s from the agent wallet."""
+def paid_session(owner_key: str | None = None, max_per_call_usd: float = 1.0,
+                 budget_url: str | None = None):
+    """requests.Session that pays Celo x402 402s from the agent wallet.
+
+    Pass budget_url so the aggregate ledger can attribute spend to a host;
+    without it the per-payment caps still apply but no aggregate budget is
+    enforced (and the gate fails closed, refusing to sign).
+    """
     import requests
     from x402 import max_amount, prefer_network, x402ClientSync
     from x402.http.clients.requests import wrapRequestsWithPayment
@@ -172,6 +281,25 @@ def paid_session(owner_key: str | None = None, max_per_call_usd: float = 1.0):
             "max_amount_per_payment": str(int(max_per_call_usd * 1_000_000)),
         }],
     })
+
+    def _gate(event=None, **_kw) -> None:
+        amount = _hook_amount(event)
+        if amount is None:
+            # Unknown offer shape: fail closed rather than sign blindly.
+            raise RuntimeError("SPEND_BUDGET: cannot determine the payment amount")
+        spend_gate(budget_url or "", amount)
+
+    def _record(event=None, **_kw) -> None:
+        amount = _hook_amount(event)
+        if amount is not None:
+            spend_record(budget_url or "", amount, _hook_nonce(event))
+
+    for hook_name, hook in (("on_before_payment_creation", _gate),
+                            ("on_after_payment_creation", _record)):
+        register = getattr(client, hook_name, None)
+        if callable(register):
+            register(hook)
+
     client.register(CELO_NETWORK, ExactCeloScheme(_agent_key(owner_key)))
     return wrapRequestsWithPayment(requests.Session(), client)
 
@@ -184,7 +312,7 @@ def pay_and_call(url: str, params: dict | None = None,
     fund it with a little USDC on Celo and retry.
     """
     import requests
-    s = paid_session(owner_key)
+    s = paid_session(owner_key, budget_url=url)
     try:
         r = s.get(url, params=params or {}, timeout=90)
     except Exception as e:
