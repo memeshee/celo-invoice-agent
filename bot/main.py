@@ -2,6 +2,20 @@
 
 /start, /new <sentence> (or just send the sentence), /pay INV-0001, /receipt INV-0001
 Settlement wiring (x402/Textile/buy) lands in their modules; bot calls them.
+
+Security fixes (audit run-1):
+- pending-draft-not-bound-to-author: PENDING is keyed by (chat_id, user_id) and
+  the confirm/drop callback must come from the draft's author on the draft's own
+  message, so a group member can no longer mint, drop or replace someone else's
+  draft.
+- screen-fail-open-mintable-draft: a screening failure now refuses the draft,
+  and only a "settle" verdict reaches the mint button. "review" is a real hold.
+- unbound-settlement-proof / settled-receipt-rewrite-on-recheck: /check scans
+  from the invoice's creation block, skips witnesses already consumed by another
+  invoice, and refuses to touch an already-settled invoice.
+- check-unguarded-payment-request / unpriceable-amount-candidates-minted: an
+  amount/currency the bot cannot price is refused at draft time, and /check
+  wraps pricing the same way /pay does.
 """
 
 import logging
@@ -17,7 +31,9 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("invoice-agent")
 
-PENDING: dict[int, dict] = {}  # chat_id -> draft awaiting confirm
+# (chat_id, user_id) -> draft awaiting confirm. Keying by chat alone let any
+# member of a group act on another member's draft.
+PENDING: dict[tuple[int, int], dict] = {}
 
 
 def fmt_draft(d: dict, s: dict) -> str:
@@ -34,6 +50,10 @@ def must_msg(update: Update) -> Message:
     msg = update.message
     assert msg is not None, "handler needs a message update"
     return msg
+
+
+def _user_id(user) -> int:
+    return int(getattr(user, "id", 0) or 0)
 
 
 async def start(update: Update, _ctx) -> None:
@@ -61,18 +81,48 @@ async def handle_text(update: Update, text: str) -> None:
     if not draft.get("is_invoice"):
         await msg.reply_text("That doesn't look like an invoice. Try: charge <who> <amount> <ccy>.")
         return
+    if not draft.get("amount"):
+        await msg.reply_text(
+            "I couldn't find a single amount I can price in that sentence. "
+            "Try: charge <who> <amount> <ccy> (e.g. charge Marco 500 BRL)."
+        )
+        return
+    from . import x402
+    priceable, detail = x402.can_price(draft.get("amount"), draft.get("currency"))
+    if not priceable:
+        await msg.reply_text(
+            f"Can't price that ({detail}). Settleable today: USDT, USDC, USAT, "
+            "or BRL/ARS/MXN/COP/USD which settle in USA₮."
+        )
+        return
     try:
         screen = jev.screen_invoice(draft, store.recent_descriptions())
-    except Exception:  # noqa: BLE001 — fail open to review, never to silent settle
+    except Exception:  # noqa: BLE001 — screening is a gate, not an ornament
         log.exception("screen failed")
-        screen = {"decision": "review", "risk_level": "review", "suspicious_p": 1.0}
-    if screen["decision"] == "block":
+        await msg.reply_text(
+            "Screening is unavailable right now, so I won't mint this draft. "
+            "Try again in a moment."
+        )
+        return
+    decision = screen.get("decision")
+    if decision == "block":
         await msg.reply_text(
             f"Blocked: looks risky (suspicion {screen['suspicious_p']:.2f}). "
             "Refine it or talk to a human."
         )
         return
-    PENDING[msg.chat_id] = {"draft": draft, "screen": screen}
+    if decision != "settle":
+        # "review" is a hold: it must not reach the mint button.
+        await msg.reply_text(
+            f"Held for review (risk {screen.get('risk_level')}). "
+            "An operator has to release this one."
+        )
+        return
+    PENDING[(msg.chat_id, _user_id(msg.from_user))] = {
+        "draft": draft,
+        "screen": screen,
+        "message_id": getattr(msg, "message_id", None),
+    }
     kb = InlineKeyboardMarkup([[
         InlineKeyboardButton("✅ Mint pay link", callback_data="confirm"),
         InlineKeyboardButton("❌ Drop", callback_data="drop"),
@@ -87,14 +137,21 @@ async def on_button(update: Update, _ctx) -> None:
     qmsg = q.message
     assert qmsg is not None and q.data is not None
     chat_id: int = getattr(qmsg, "chat_id", None) or q.from_user.id
-    if q.data == "drop" or chat_id not in PENDING:
-        PENDING.pop(chat_id, None)
+    key = (chat_id, _user_id(q.from_user))
+    item = PENDING.get(key)
+    if item is None or item.get("message_id") != getattr(qmsg, "message_id", None):
+        # A foreign press, a stale draft, or a replaced slot: touch nothing.
+        await q.answer(text="This draft isn't yours (or it was replaced).", show_alert=False)
+        return
+    PENDING.pop(key, None)
+    if q.data == "drop":
         await q.edit_message_text("Dropped.")
         return
     user = q.from_user
-    item = PENDING.pop(chat_id)
+    from . import x402
     inv = store.create(item["draft"], item["screen"],
-                       creator=str(user.username or user.id))
+                       creator=str(user.username or user.id),
+                       created_block=x402.head_block())
     # Settlement URL arrives with x402 wiring; receipt carries trust either way.
     await q.edit_message_text(
         f"Minted {inv['id']}\n"
@@ -146,28 +203,50 @@ async def check(update: Update, ctx) -> None:
     if not inv:
         await msg.reply_text("Unknown invoice.")
         return
+    if inv["status"] == "settled":
+        # Settlement is terminal; re-scanning must not re-bind the witness.
+        await msg.reply_text(f"{inv['id']} already settled: {inv['settlement_tx']}")
+        return
     from . import x402
     wallet = os.environ.get("INVOICE_WALLET", "")
     if not wallet:
         await msg.reply_text("No payer address configured yet.")
         return
-    req = x402.create_payment_request(inv, wallet)
     try:
-        hits = x402.watch_transfers(wallet, req["symbol"],
-                                    min_atomic=req["amount_atomic"])
+        req = x402.create_payment_request(inv, wallet)
+    except ValueError as e:
+        await msg.reply_text(f"Can't price that: {e}")
+        return
+    try:
+        hits = x402.watch_transfers(
+            wallet, req["symbol"], min_atomic=req["amount_atomic"],
+            # Anchor the window at the invoice's creation block; without it a
+            # transfer mined before the invoice existed can serve as its proof.
+            from_block=inv.get("created_block") or "latest",
+        )
     except Exception as e:  # noqa: BLE001
         log.exception("watch failed")
         await msg.reply_text(f"Chain lookup hiccup ({e}). Try /check again.")
         return
-    if not hits:
+    # A witness already credited to another invoice cannot settle this one.
+    fresh = [h for h in hits if not store.tx_used(h["tx"])]
+    if not fresh:
         await msg.reply_text(
             f"{inv['id']}: no {req['symbol']} received yet. "
             f"Send {req['amount_display']} {req['symbol']} to `{wallet}`, then /check again."
         )
         return
-    inv = store.mark_settled(inv["id"], hits[0]["tx"])
-    assert inv is not None
-    await msg.reply_text(f"{inv['id']} SETTLED ✅\nTx: `{hits[0]['tx']}`")
+    inv_id = inv["id"]
+    settled = store.mark_settled(inv_id, fresh[0]["tx"])
+    if settled is None:
+        await msg.reply_text(
+            f"{inv_id}: that transfer already settled another invoice. "
+            "Ask the payer to send a fresh transfer."
+        )
+        return
+    await msg.reply_text(
+        f"{inv_id} SETTLED ✅\nTx: `{settled['settlement_tx']}`"
+    )
 
 
 async def receipt(update: Update, ctx) -> None:
