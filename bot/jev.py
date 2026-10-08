@@ -3,6 +3,15 @@
 Code owns the workflow; Jev supplies typed semantic judgments.
 Endpoint: POST https://api.typesafe.ai/v1/systemone
 Auth: TYPESAFE_API_KEY env or ~/.config/typesafe/api_key (server-side only).
+
+Security fixes (audit run-1):
+- amount-regex-splits-grouped-numbers: the amount tokenizer treated the first
+  separator in a grouped number as the decimal mark, so "1.500 BRL" offered the
+  model only ['1.50','0'] and the invoice priced 1000x low. Tokens are now read
+  whole and normalized to canonical dot-decimal before they become candidates.
+- screen-fail-open-mintable-draft / trust-verdict-model-steerable: model
+  answers are validated against SCREEN_LEVELS and coerced to numbers, and an
+  off-schema or missing answer fails closed to "review" instead of "clean".
 """
 
 import json
@@ -14,11 +23,34 @@ from pathlib import Path
 SYSTEMONE_URL = "https://api.typesafe.ai/v1/systemone"
 MODEL = "jev-latest"
 
+# Kept for callers/tests that still reference it; amount parsing uses the
+# whole-token tokenizer below.
 AMOUNT_RE = re.compile(r"\d+(?:[.,]\d{1,2})?")
 CURRENCY_RE = re.compile(
     r"(?i)\b(wARS|wBRL|wMXN|wCOP|wPEN|wCLP|cNGN|USDC|USDT|USA₮|USDT|BRL|ARS|MXN|COP|PEN|CLP|USD|NGN)\b"
 )
 HANDLE_RE = re.compile(r"@[\w_]{2,32}|\b[A-Z][a-z]{2,20}\b")
+NUM_TOKEN_RE = re.compile(r"\d[\d.,]*\d|\d")
+
+
+def normalize_amount_token(token: str) -> str:
+    """Grouped/decimal token -> canonical dot-decimal string.
+
+    "1.500" -> "1500", "1.500,50" -> "1500.50", "1,500.50" -> "1500.50",
+    "500,00" -> "500.00". The last separator counts as the decimal mark only
+    when it is followed by one or two digits; everything before it is grouping.
+    """
+    parts = re.split(r"[.,]", token)
+    if len(parts) > 1 and 1 <= len(parts[-1]) <= 2:
+        whole, frac = "".join(parts[:-1]), parts[-1]
+    else:
+        whole, frac = "".join(parts), ""
+    return f"{whole}.{frac}" if frac else whole
+
+
+def amount_candidates(text: str) -> list[str]:
+    """Amounts the model may choose from, canonical and de-duplicated."""
+    return list(dict.fromkeys(normalize_amount_token(t) for t in NUM_TOKEN_RE.findall(text)))
 
 
 def _api_key() -> str:
@@ -47,7 +79,7 @@ def ask(state, questions: dict, model: str = MODEL) -> dict:
 
 def parse_invoice(text: str) -> dict:
     """Free-text invoice -> structured draft. Code finds candidates, Jev selects."""
-    amounts = list(dict.fromkeys(AMOUNT_RE.findall(text)))
+    amounts = amount_candidates(text)
     currencies = list(dict.fromkeys(c.upper() for c in CURRENCY_RE.findall(text)))
     names = list(dict.fromkeys(HANDLE_RE.findall(text)))[:8]
     if not amounts:
@@ -84,15 +116,19 @@ def parse_invoice(text: str) -> dict:
     answers = ask({"msg": {"text": text}, "amounts": amounts,
                    "currencies": currencies, "names": names}, questions)
 
-    def choice(qid):
+    def choice(qid, allowed: list[str] | None = None):
         a = answers.get(qid, {})
-        return (a.get("choice") or a.get("value") or a.get("selected"),
-                a.get("confidence", 0) or 0)
+        value = a.get("choice") or a.get("value") or a.get("selected")
+        if allowed is not None and value not in allowed:
+            # The answer must be one of the candidates we offered; anything
+            # else is model drift and must not become a settlement threshold.
+            return None, 0
+        return (value, a.get("confidence", 0) or 0)
 
-    amount, amount_conf = choice("pick_amount")
-    currency, _ = choice("pick_currency") if currencies else (None, 0)
-    recipient, _ = choice("pick_recipient") if names else (None, 0)
-    intent_p = answers.get("is_invoice_intent", {}).get("noul", 0) or 0
+    amount, amount_conf = choice("pick_amount", amounts)
+    currency, _ = choice("pick_currency", currencies) if currencies else (None, 0)
+    recipient, _ = choice("pick_recipient", names) if names else (None, 0)
+    intent_p = _as_float(answers.get("is_invoice_intent", {}).get("noul"), 0.0)
     # Gate: plain intent, OR hard extraction evidence (amount confidently
     # picked + currency present). The latter covers terse/test phrasing
     # like "charge Test 0.1 USD" that scores low on intent prose.
@@ -105,17 +141,35 @@ def parse_invoice(text: str) -> dict:
         "amount_conf": amount_conf,
         "currency": currency,
         "recipient": recipient,
-        "has_recipient_p": (answers.get("has_recipient", {}).get("noul")
+        "has_recipient_p": (_as_float(answers.get("has_recipient", {}).get("noul"), None)
                             if "has_recipient" in answers else None),
         "raw": text,
     }
+
+
+def _as_float(value, default):
+    """Coerce a model answer to float, or return the default when it is not one."""
+    if isinstance(value, bool) or value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return default
+    return default
 
 
 SCREEN_LEVELS = ["clean", "review", "block"]
 
 
 def screen_invoice(invoice: dict, recent_descriptions: list[str] | None = None) -> dict:
-    """Fraud screen. One batched call; code applies confidence-gated routing."""
+    """Fraud screen. One batched call; code applies confidence-gated routing.
+
+    Answers are validated before they gate routing, and anything off-schema
+    fails closed to "review" rather than defaulting to a clean settle.
+    """
     state = {"invoice": invoice, "recent": recent_descriptions or []}
     answers = ask(state, {
         "is_suspicious": {
@@ -140,11 +194,15 @@ def screen_invoice(invoice: dict, recent_descriptions: list[str] | None = None) 
             ],
         },
     })
-    susp = answers.get("is_suspicious", {}).get("noul", 0) or 0
-    dup = answers.get("is_duplicate", {}).get("noul", 0) or 0
+    # Missing or off-type answers are treated as maximally suspicious, not clean.
+    susp = _as_float(answers.get("is_suspicious", {}).get("noul"), 1.0)
+    dup = _as_float(answers.get("is_duplicate", {}).get("noul"), 1.0)
+    pressure = _as_float(answers.get("uses_pressure", {}).get("noul"), None)
     score_ans = answers.get("risk_level", {})
+    level = score_ans.get("score") if isinstance(score_ans, dict) else None
+    if level not in SCREEN_LEVELS:
+        level = "review"  # fail closed on missing or off-vocabulary answers
     # Code-side gate: block on high suspicion or block-level score, review on mid.
-    level = score_ans.get("score", "clean")
     decision = "settle"
     if susp >= 0.8 or level == "block":
         decision = "block"
@@ -153,7 +211,7 @@ def screen_invoice(invoice: dict, recent_descriptions: list[str] | None = None) 
     return {
         "suspicious_p": susp,
         "duplicate_p": dup,
-        "pressure_p": (answers.get("uses_pressure", {}).get("noul")),
+        "pressure_p": pressure,
         "risk_level": level,
         "decision": decision,
         "raw_answers": answers,
