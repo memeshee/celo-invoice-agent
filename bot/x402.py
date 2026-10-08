@@ -11,10 +11,22 @@ Two legs, both real money:
 
 Verified live 2026-10-07: facilitator mainnet ok; USAT 0xD2ab...771
 ("Tether America USD", v1, eip3009, 6 dec).
+
+Security fixes (audit run-1):
+- malformed-erc20-transfer-topic: the standard Transfer topic was truncated to
+  30 bytes, so settlement for USDT/USDC/w* could never be detected.
+- amount-regex-splits-grouped-numbers / unpriceable-amount-candidates-minted:
+  atomic() read amounts with permissive int() forms; it now accepts only a
+  canonical dot-decimal amount, so a signed or placeholder value can no longer
+  become the settlement threshold.
+- currency-candidates-not-priceable: the asset lookup uppercased the currency
+  and compared it against mixed-case keys, making the whole w* corridor
+  unpriceable.
 """
 
 import json
 import os
+import re
 import urllib.request
 
 FACILITATOR = os.environ.get("X402_FACILITATOR_URL", "https://api.x402.celo.org")
@@ -48,12 +60,24 @@ ASSETS = {
              "method": "permit2"},
 }
 
+# Currency candidates are uppercased upstream (bot/jev.py CURRENCY_RE), so an
+# exact-key lookup into ASSETS can never match the mixed-case w* symbols.
+_ASSET_LOOKUP = {key.lower(): value for key, value in ASSETS.items()}
+
+# Fiat invoice currencies settle in USA₮.
+FIAT_IN_USAT = ("brl", "ars", "mxn", "cop", "usd")
+
 # USAT on Celo emits a NON-STANDARD Transfer event (observed live:
 # 440/544 USAT logs in a 2000-block window use ...f523b3ef, plus
 # AuthorizationUsed ...79b10a5 and Approval ...c8c7c3b925). Its topic-0
 # shares the ddf252ad prefix but differs in the tail — never assume
 # ERC-20 Transfer topic for this token. USDT/USDC use the standard sig.
-TRANSFER_TOPIC_STD = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4f5b3e"
+#
+# Both constants are the canonical keccak of Transfer(address,address,uint256)
+# (32 bytes). A truncated topic can never equal a real log topic, so the
+# membership test in watch_transfers() would reject every genuine log for any
+# symbol that only accepted the truncated value.
+TRANSFER_TOPIC_STD = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 TRANSFER_TOPIC_USAT = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
 TRANSFER_TOPICS = {
@@ -64,6 +88,14 @@ TRANSFER_TOPICS = {
     "wBRL": (TRANSFER_TOPIC_STD,),
     "wCOP": (TRANSFER_TOPIC_STD,),
 }
+
+# Fail fast rather than silently settle nothing: every accepted signature must
+# be a real 32-byte topic.
+for _sym, _topics in TRANSFER_TOPICS.items():
+    for _t in _topics:
+        assert len(_t) == 66 and _t.startswith("0x"), f"invalid log topic for {_sym}: {_t}"
+
+_AMOUNT_RE = re.compile(r"^\d+(?:\.\d+)?$")
 
 
 def _get(path: str) -> dict:
@@ -80,11 +112,36 @@ def supported_assets() -> dict:
     return _get("/supported")
 
 
+def canonical_amount(value: object) -> str:
+    """Normalize an amount to canonical dot-decimal, or raise.
+
+    Strict on purpose: int() alone accepts '-5', '+5', ' 5', '5_0' and
+    fullwidth digits, any of which would silently become the settlement
+    threshold — and a threshold at or below zero is satisfied by any transfer.
+    """
+    s = str(value).strip().replace(",", ".")
+    if not _AMOUNT_RE.match(s):
+        raise ValueError(f"invalid amount: {value!r}")
+    return s
+
+
 def atomic(amount_display: str, symbol: str) -> int:
-    whole, _, frac = amount_display.partition(".")
+    """Canonical dot-decimal amount -> atomic units. Non-canonical raises."""
+    whole, _, frac = canonical_amount(amount_display).partition(".")
     dec = ASSETS[symbol]["decimals"]
     frac = (frac + "0" * dec)[:dec]
     return int(whole) * 10**dec + int(frac or 0)
+
+
+def resolve_symbol(currency: object) -> str:
+    """Invoice currency -> settlement symbol. Case-insensitive, fails closed."""
+    key = str(currency or "USAT").strip().lower()
+    if key in FIAT_IN_USAT:
+        key = "usat"
+    asset = _ASSET_LOOKUP.get(key)
+    if asset is None:
+        raise ValueError(f"unsupported settlement asset: {currency}")
+    return asset["symbol"]
 
 
 def create_payment_request(invoice: dict, pay_to: str) -> dict:
@@ -94,20 +151,31 @@ def create_payment_request(invoice: dict, pay_to: str) -> dict:
     (fiat codes settle in USAT; w* codes settle in-kind for the LatAm track).
     Returns what /pay shows the payer. watch_transfers() closes the loop.
     """
-    symbol = (invoice.get("currency") or "USAT").upper()
-    if symbol in ("BRL", "ARS", "MXN", "COP", "USD"):
-        symbol = "USAT"
-    if symbol not in ASSETS:
-        raise ValueError(f"unsupported settlement asset: {symbol}")
+    symbol = resolve_symbol(invoice.get("currency"))
     return {
         "invoice_id": invoice["id"],
         "pay_to": pay_to,
-        "amount_display": invoice["amount"],
+        "amount_display": canonical_amount(invoice["amount"]),
         "symbol": symbol,
         "amount_atomic": atomic(str(invoice["amount"]), symbol),
         "asset_contract": ASSETS[symbol]["asset"],
         "chain": f"eip155:{CELO_CHAIN_ID}",
     }
+
+
+def can_price(amount: object, currency: object) -> tuple[bool, str]:
+    """Whether an amount/currency pair is priceable, without needing a wallet.
+
+    Called before a draft can be minted, so an unpriceable invoice is refused
+    with a message instead of raising inside /check later.
+    """
+    try:
+        symbol = resolve_symbol(currency)
+        canonical = canonical_amount(amount)
+        atomic(canonical, symbol)
+    except (ValueError, KeyError) as exc:
+        return False, str(exc)
+    return True, f"{canonical} {symbol}"
 
 
 def _w3():
@@ -116,28 +184,54 @@ def _w3():
         os.environ.get("CELO_RPC_URL", "https://forno.celo.org")))
 
 
+def head_block() -> int | None:
+    """Chain head, or None when the RPC is unreachable (mint-time best effort).
+
+    The invoice's creation block is the lower bound of its settlement window.
+    When the RPC is down at mint time the invoice keeps None and /check falls
+    back to a head-relative window, which is weaker but never blocks minting.
+    """
+    try:
+        return int(_w3().eth.block_number)
+    except Exception:  # noqa: BLE001 — minting must not fail on an RPC blip
+        return None
+
+
 def watch_transfers(pay_to: str, symbol: str = "USAT",
                     min_atomic: int = 1, from_block: int | str = "latest",
                     to_block: int | str = "latest") -> list[dict]:
-    """Scan USA₮ Transfer events to pay_to. Returns [{tx, value}].
+    """Scan Transfer events to pay_to. Returns [{tx, block, value}].
 
-    from_block/to_block accept ints or "latest"; pass a window around the
-    invoice creation block in production. Never trust the facilitator reply
-    alone — this onchain check is the settlement proof.
+    from_block/to_block accept ints or "latest". Callers must pass the
+    invoice's creation block as from_block: a head-relative window lets a
+    transfer mined before the invoice existed serve as its witness, which is
+    how one payment settles several invoices. Never trust the facilitator
+    reply alone — this onchain check is the settlement proof.
     """
+    if int(min_atomic) <= 0:
+        raise ValueError(f"min_atomic must be positive, got {min_atomic}")
     w3 = _w3()
     head = w3.eth.block_number
     to_b = head if isinstance(to_block, str) else int(to_block)
     from_b = max(0, to_b - 5000) if isinstance(from_block, str) else int(from_block)
+    if from_b > to_b:
+        return []
     padded = "0x" + "0" * 24 + pay_to.lower().replace("0x", "")
     # Forno rejects ALL topic filters (even flat single-topic arrays), so pull
     # address-only logs in a narrow window and filter signature + recipient
     # client-side. Keep windows narrow.
-    logs = w3.eth.get_logs({
+    flt = {
         "address": ASSETS[symbol]["asset"],
         "fromBlock": from_b,
         "toBlock": to_b,
-    })
+    }
+    logs = w3.eth.get_logs(flt)
+    if not logs:
+        # A public RPC node can answer an immutable historical window with an
+        # empty result — observed on forno.celo.org for a window that provably
+        # contains the matching log. One retry keeps a real payment from being
+        # reported as "not received yet".
+        logs = w3.eth.get_logs(flt)
     out = []
     want = TRANSFER_TOPICS.get(symbol, (TRANSFER_TOPIC_STD,))
     for lg in logs:
@@ -152,7 +246,10 @@ def watch_transfers(pay_to: str, symbol: str = "USAT",
         value = int(lg["data"].hex(), 16) if isinstance(lg["data"], bytes) \
             else int(lg["data"], 16)
         if value >= min_atomic:
-            out.append({"tx": "0x" + lg["transactionHash"].hex(), "value": value})
+            raw_block = lg.get("blockNumber") if isinstance(lg, dict) else None
+            out.append({"tx": "0x" + lg["transactionHash"].hex(),
+                        "block": int(raw_block) if raw_block is not None else None,
+                        "value": value})
     return out
 
 
