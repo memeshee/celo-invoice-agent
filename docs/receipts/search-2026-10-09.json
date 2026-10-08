@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-09",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "USAT stablecoin invoicing onchain payments",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 269790,
+ "usdc_after_atomic": 259790,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.26979,
+ "usdc_after": 0.25979,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "USAT stablecoin invoicing onchain payments",
+  "count": 2,
+  "results": [
+   {
+    "title": "Stablecoin Invoicing: Get Paid in USDC/USDT | Support",
+    "url": "https://eco.com/support/en/articles/14796349-stablecoin-invoicing-get-paid-in-usdc-usdt",
+    "description": "Stablecoin invoicing is the practice of billing a customer in a fiat-pegged digital asset such as USDC or USDT and accepting settlement onchain, typically through a payment link or wallet address attached to an invoice.",
+    "age": "3 days ago",
+    "publishedAt": "2026-10-05T16:04:49.000Z"
+   },
+   {
+    "title": "Stablecoin Invoice Generator \u2014 Crypto Payments Made Easy",
+    "url": "https://www.acctual.com/stablecoin-invoicing",
+    "description": "The easiest way to send invoices (accounts receivable) in stablecoins. Move onchain while staying compliant and secure.",
+    "age": null,
+    "publishedAt": null
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xc50b7821b834f0a71d66ff58e432f2da92034c6e95c1d1bf7cd8b8f87bb6940d",
+ "settlement_block": 79585321
+}
