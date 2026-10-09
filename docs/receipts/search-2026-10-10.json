@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-10",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Latin America stablecoin FX corridors onchain settlement",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 259790,
+ "usdc_after_atomic": 249790,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.25979,
+ "usdc_after": 0.24979,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Latin America stablecoin FX corridors onchain settlement",
+  "count": 2,
+  "results": [
+   {
+    "title": "Stablecoin Cross-Border Payments: The LATAM Corridor Playbook | Support",
+    "url": "https://eco.com/support/en/articles/15575499-stablecoin-cross-border-payments-the-latam-corridor-playbook",
+    "description": "MXNB, Bitso's onchain peso stablecoin, opened a route where the FX leg happens onchain before the final SPEI push. For larger tickets, OTC desks in Mexico still quote tighter spreads than the public order book, particularly for tickets meaningfully above the public-book size of comfort (commonly observed in the low-to-mid six-figure USD range). \u200b \u00b7 Argentina is the corridor where stablecoin rails most clearly outperform traditional banking, because traditional banking effectively does not work for many foreign B2B inflows.",
+    "age": "3 weeks ago",
+    "publishedAt": "2026-09-16T00:00:00.000Z"
+   },
+   {
+    "title": "Why Enterprises Are Adopting Stablecoins for LATAM Payments",
+    "url": "https://polygon.technology/blog/latam-corridor-economics-why-enterprises-are-betting-on-stablecoins-for-cross-border-payments",
+    "description": "The US\u2013Mexico corridor alone ... remittances in 2024, roughly 10% of the entire corridor, with competitive FX and same-day settlement....",
+    "age": null,
+    "publishedAt": null
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0x2b9572e44ef9968c5240625e1aaa996ba7be41d0c1aa42025f33888918d2433e",
+ "settlement_block": 79671774
+}
