@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-11",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Textile FX stablecoin settlement Celo USDC",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 249790,
+ "usdc_after_atomic": 239790,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.24979,
+ "usdc_after": 0.23979,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Textile FX stablecoin settlement Celo USDC",
+  "count": 2,
+  "results": [
+   {
+    "title": "Address book | Textile FX",
+    "url": "https://docs.textilecredit.com/protocol/address-book.html",
+    "description": "USDC and USDT are the standard Circle and Tether stables (6 decimals). wARS is a wrapped Argentine peso; wBRL is a wrapped Brazilian real. Both wARS and wBRL are 18-decimal ERC-20s on Celo.",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "What is Textile FX? | Textile FX",
+    "url": "https://docs.textilecredit.com/",
+    "description": "Textile FX is an instant FX rail for stablecoins. It moves value between non-USD assets (cNGN for the Nigerian naira, wARS for the Argentine peso, wBRL for the Brazilian real, IDRX for the Indonesian rupiah, WETH for wrapped ether) and USD stablecoins (USDT and USDC), fully on-chain. Moving money between a currency and dollars is normally slow and expensive. Correspondent banks, OTC desks, multi-day settlement.",
+    "age": null,
+    "publishedAt": null
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xbd98d2831dc71e20b4ce67b0ce4ce1a305fd2184aaae7733d4fefb45577decab",
+ "settlement_block": 79758255
+}
