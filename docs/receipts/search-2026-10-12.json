@@ -1,0 +1,53 @@
+{
+ "date": "2026-10-12",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Ripio wFIAT stablecoin Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 239790,
+ "usdc_after_atomic": 219790,
+ "usdc_spent_atomic": 20000,
+ "usdc_before": 0.23979,
+ "usdc_after": 0.21979,
+ "paid_usdc_atomic": 10000,
+ "note": "0.02 settled today across two attempts at this route: attempt-1 settled but its response was lost client-side (capture bug); this record's response is from attempt-2 (idempotency-key 'daily-2026-10-12-ripio-wfiat').",
+ "extra_settlements": [
+  {
+   "attempt": 1,
+   "settlement_tx": "0x7cc4fd4f441b96140687e4cbe44fcf6ed0eb90190173ae301fa93c077b110616",
+   "settlement_block": 79844645,
+   "usdc_atomic": 10000,
+   "note": "response lost client-side after settlement"
+  }
+ ],
+ "response": {
+  "query": "Ripio wFIAT stablecoin Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "Ripio Launches wFIAT Stablecoins on Celo with No-Cost On-/Off-Ramps - Blockchain.News",
+    "url": "https://blockchain.news/news/ripio-wfiat-stablecoins-celo-integration",
+    "description": "Ripio expands its Latin American stablecoin portfolio with wFIAT integration on Celo, offering no-cost on-/off-ramps and enabling real-world use cases.",
+    "age": "August 1, 2026",
+    "publishedAt": "2026-08-01T08:55:34.000Z"
+   },
+   {
+    "title": "Ripio Deploys wFIAT Stack on Celo with No Cost On-/Off-Ramps, Expanding the Leading Stablecoin Network\u2019s Ecosystem with Latin American Local Digital Currencies | by Celo Core Co. | Jul, 2026 | The Celo Blog",
+    "url": "https://blog.celo.org/ripio-deploys-wfiat-stack-on-celo-with-no-cost-on-off-ramps-expanding-the-leading-stablecoin-9f801b82b899?gi=76a8e16fa0be",
+    "description": "Ripio\u2019s Argentine Peso, Brazilian ... Stablecoins are Now Live on Celo \u00b7 wFIAT, the stablecoin stack from Ripio, the leading crypto infrastructure and digital finance platform in Latin America, is now live on Celo....",
+    "age": "July 31, 2026",
+    "publishedAt": "2026-07-31T20:31:48.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0x8befb60dd64c48adde001f6327e88e729166c2665dbe01f8891abeeac72361c0",
+ "settlement_block": 79844900
+}
