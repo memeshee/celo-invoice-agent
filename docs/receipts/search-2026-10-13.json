@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-13",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "MiniPay Celo stablecoin remittances",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 219790,
+ "usdc_after_atomic": 209790,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.21979,
+ "usdc_after": 0.20979,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "MiniPay Celo stablecoin remittances",
+  "count": 2,
+  "results": [
+   {
+    "title": "MiniPay | Dollar Stablecoin Wallet",
+    "url": "https://minipay.to/",
+    "description": "* MiniPay is a self-custodial stablecoin wallet built on the Celo blockchain.",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "MiniPay at 2 Years: 10 Million Wallets and Stablecoins in Daily Life",
+    "url": "https://minipay.to/blog/minipay-2-years-stablecoins-everyday-payments",
+    "description": "Stablecoins only matter if they\u2019re faster and cheaper than the alternatives. MiniPay runs on the Celo blockchain, which recently migrated to an Ethereum L2 with one-block finality.",
+    "age": "September 13, 2025",
+    "publishedAt": "2025-09-13T00:00:00.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xeb5930e588273cca9fc26e61354b70d159d0ebe96313492f2e31f2d14e5b9847",
+ "settlement_block": 79930939
+}
