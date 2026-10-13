@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-14",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Brazil stablecoin wBRL Celo payments",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 209790,
+ "usdc_after_atomic": 199790,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.20979,
+ "usdc_after": 0.19979,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Brazil stablecoin wBRL Celo payments",
+  "count": 2,
+  "results": [
+   {
+    "title": "How to Send Stablecoin Payments to Contractors in Brazil",
+    "url": "https://www.deel.com/blog/stablecoin-payments-contractors-brazil/",
+    "description": "Brazil's macroeconomic backdrop ... structural dynamics drive this. Pix, the instant-payment system created by Brazil's central bank (BCB), enables 24/7 real-time Brazilian real (BRL) settlement for most bank accounts in the country....",
+    "age": "3 weeks ago",
+    "publishedAt": "2026-09-24T00:00:00.000Z"
+   },
+   {
+    "title": "Brazil imposes partial ban on stablecoins, crypto for cross border payments and FX - Ledger Insights - blockchain for enterprise",
+    "url": "https://www.ledgerinsights.com/brazil-imposes-partial-ban-on-stablecoins-crypto-for-cross-border-payments-and-fx/",
+    "description": "Brazil\u2019s central bank has banned fintech and payment provider cross border services from using stablecoins or crypto to settle with overseas counterparties. Resolution BCB 561, published last Thursday and effective from October 2026, states that settlement between an eFX provider and its ...",
+    "age": "May 4, 2026",
+    "publishedAt": "2026-05-04T12:40:37.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0x74bad9cf0993e8691a7cfaeaa19cfa6a3ad44b5170d3d536b3f99aa0c5a94e3f",
+ "settlement_block": 80017306
+}
