@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-15",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Argentina freelancers stablecoin invoicing Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 199790,
+ "usdc_after_atomic": 189790,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.19979,
+ "usdc_after": 0.18979,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Argentina freelancers stablecoin invoicing Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "Cross-Border Stablecoin Invoicing for Freelancers | Support",
+    "url": "https://eco.com/support/en/articles/14796353-cross-border-stablecoin-invoicing-for-freelancers",
+    "description": "Five corridors dominate cross-border freelance stablecoin invoicing today, each with different chain and asset preferences. \u200b \u00b7 Common asset: USDC on Polygon or Base. Common alternative: USDT on Tron. Use case: US agencies billing Argentinian, Brazilian, or Mexican contractors; reverse direction for LatAm freelancers billing US clients. Argentina\u2019s peso volatility makes USD-pegged stablecoins materially better than peso wires, Chainalysis\u2019 2024 Latin America report documents stablecoin payments displacing both peso wires and Western Union remittances.",
+    "age": "1 week ago",
+    "publishedAt": "2026-10-05T15:58:19.000Z"
+   },
+   {
+    "title": "How to Send Stablecoin Payments to Contractors in Argentina",
+    "url": "https://www.deel.com/blog/stablecoin-payments-contractors-argentina/",
+    "description": "The contractor's invoice reference tied to the payment \u00b7 Stablecoin payment programs require ongoing monitoring as regulations and contractor circumstances change. Regulatory requirements evolve, contractor classifications shift, and both the paying company and the platform have continuing obligations. ... ARCA and VASP reporting updates: Argentina's crypto regulatory framework is still developing.",
+    "age": "1 month ago",
+    "publishedAt": "2026-09-16T20:38:26.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xbccc8efbce701c394f070df743fba69535c4e28af2bb4a9c73e1b571d2f4a954",
+ "settlement_block": 80103716
+}
