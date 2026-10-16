@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-17",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Mexico stablecoin invoicing Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 189790,
+ "usdc_after_atomic": 179790,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.18979,
+ "usdc_after": 0.17979,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Mexico stablecoin invoicing Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "Eco Upgrades Stablecoins on Celo and Beyond",
+    "url": "https://eco.com/blog/eco-upgrades-stablecoins-on-celo/",
+    "description": "Celo-native apps can now easily integrate stablecoins and send them to major chains instantly.",
+    "age": "April 15, 2026",
+    "publishedAt": "2026-04-15T15:35:38.000Z"
+   },
+   {
+    "title": "Celo: Ethereum Layer 2 for Payments, Stablecoins & DeFi",
+    "url": "https://celo.org/",
+    "description": "Celo is an Ethereum L2 powering fast, low-cost payments, native stablecoins, and DeFi apps \u2014 driving real-world adoption and financial inclusion worldwide.",
+    "age": null,
+    "publishedAt": null
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xcd4b2678ffca188e7878bb259b96b9c3acb6098a6e71eed41ff0bc076916a0c9",
+ "settlement_block": 80276636
+}
