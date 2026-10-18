@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-19",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Colombia stablecoin remittances Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 131277,
+ "usdc_after_atomic": 121277,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.131277,
+ "usdc_after": 0.121277,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Colombia stablecoin remittances Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "governance/CGPs/cgp-0060.md at main \u00b7 celo-org/governance",
+    "url": "https://github.com/celo-org/governance/blob/main/CGPs/cgp-0060.md",
+    "description": "Also when people receive their remittances they want to spend it in food, transport, and goods if they could exchange their foreign remittances (cUSD, cEUR, cREAL) to their local currency (cCOP) and spend it without doing cashout was very useful to the adoption of Valora and Celo Blockchain. People in Colombia is thinking every day how to do their savings in dollars, they have the option to use Valora and exchange their cCOP to cUSD and receive the 10% Valora gives to the holders of all stable assets, this property will attract a lot of people to move their funds from their saving accounts to the Celo Ecosystem.",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "What Is Celo? Mobile-First L2 and Stablecoin Rails | Support",
+    "url": "https://eco.com/support/en/articles/15183710-what-is-celo-mobile-first-l2-and-stablecoin-rails",
+    "description": "The network uses phone-number-based address discovery, native dollar and euro stablecoins issued by the Mento protocol, and lets users pay gas in stablecoins or USDC instead of ETH. It hosts roughly $150M in TVL as of mid-2026 per DeFiLlama, with most activity in remittances, payroll, and savings ...",
+    "age": "September 16, 2026",
+    "publishedAt": "2026-09-16T00:00:00.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xd73ff18cc09d7e01b87834dcbe2951c6654f19899d552cef0cc77a1b14c46284",
+ "settlement_block": 80449394
+}
