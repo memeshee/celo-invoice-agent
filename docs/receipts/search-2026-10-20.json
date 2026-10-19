@@ -1,0 +1,43 @@
+{
+ "date": "2026-10-20",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Chile stablecoin B2B invoicing Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 121277,
+ "usdc_after_atomic": 111277,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.121277,
+ "usdc_after": 0.111277,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Chile stablecoin B2B invoicing Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "Best B2B Stablecoin Invoicing Tools 2026 | Support",
+    "url": "https://eco.com/support/en/articles/14895620-best-b2b-stablecoin-invoicing-tools-2026",
+    "description": "B2B invoicing tools generate PDF invoices with a tax ID, line items, and due date, support recurring billing schedules, push paid invoices into QuickBooks or Xero as journal entries, and handle dispute or refund flows.",
+    "age": "July 16, 2026",
+    "publishedAt": "2026-07-16T00:00:00.000Z"
+   },
+   {
+    "title": "How to Buy Celo (CELO) in Chile with Credit Card Online",
+    "url": "https://www.bitget.com/how-to-buy/celo/chile",
+    "description": "Step-by-step guide with videos for beginners on how to buy Celo in Chile with a credit card. Learn to buy CELO and other crypto instantly and safely.",
+    "age": null,
+    "publishedAt": null
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xde18d6e865da6a8b96e81bcf97eb251c0a27476a63f5f0e299637e0e0888c946",
+ "settlement_block": 80536117
+}
