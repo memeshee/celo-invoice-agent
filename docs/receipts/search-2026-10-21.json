@@ -1,0 +1,60 @@
+{
+ "date": "2026-10-21",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Peru stablecoin freelancer payouts Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 111277,
+ "usdc_after_atomic": 91277,
+ "usdc_spent_atomic": 20000,
+ "usdc_before": 0.111277,
+ "usdc_after": 0.091277,
+ "paid_usdc_atomic": 20000,
+ "search_cost_atomic": 10000,
+ "settlement_tx": "0x064bbe68811a3aa9638fa3eb922c03d1bb38c29da13c73016a8707b3ca55276f",
+ "settlement_block": 80622328,
+ "settlements": [
+  {
+   "transaction": "0x75c55d54464a62825298f3cda796aac9260d3d1776927bee9af76465950225e3",
+   "block": 80622253,
+   "amount_atomic": 10000,
+   "note": "first attempt settled on-chain but the client crashed (wrapped response has no .status) before the body was saved; re-issued once to capture the result"
+  },
+  {
+   "transaction": "0x064bbe68811a3aa9638fa3eb922c03d1bb38c29da13c73016a8707b3ca55276f",
+   "block": 80622328,
+   "amount_atomic": 10000,
+   "status": 200
+  }
+ ],
+ "note": "Two 0.01 USDC settlements today because the first response body was lost client-side; search itself ran once.",
+ "usdc_before_note": "day-open balance at 2026-10-20 19:00 UTC (block 80622141), matching the 2026-10-20 receipt close",
+ "response": {
+  "query": "Peru stablecoin freelancer payouts Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "Tether leads Belo's $14 million raise to expand stablecoin payments across Latin America",
+    "url": "https://www.coindesk.com/business/2026/04/28/tether-leads-belo-s-usd14-million-raise-to-expand-stablecoin-payments-across-latin-america",
+    "description": "Belo, a Latin America-focused digital wallet that uses crypto rails for payments, has raised $14 million in a Series A round led by stablecoin issuer Tether. The round included Titan Fund, The Venture City, Mindset Ventures and G2.",
+    "age": "April 29, 2026",
+    "publishedAt": "2026-04-29T11:13:32.000Z"
+   },
+   {
+    "title": "stablecoin payments for fast, low-cost transfers",
+    "url": "https://muralpay.com/blog/stablecoin-payments-for-freelancers-a-guide-to-fast-low-cost-transfers",
+    "description": "For freelancers already juggling multiple invoicing tools, adding stablecoin integration can be as straightforward as connecting a compatible wallet or using a payments platform that supports both fiat and digital currency rails. By scheduling batch payouts, you can slash per-transaction fees and keep your global collaborators paid on time without extra manual work.",
+    "age": null,
+    "publishedAt": null
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ }
+}
