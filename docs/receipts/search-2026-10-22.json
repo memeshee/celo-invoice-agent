@@ -1,0 +1,45 @@
+{
+ "date": "2026-10-22",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Venezuela stablecoin remittances Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 91277,
+ "usdc_after_atomic": 81277,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.091277,
+ "usdc_after": 0.081277,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Venezuela stablecoin remittances Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "Stablecoin - Wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Stablecoin",
+    "description": "A 2025 study in the journal Telematics and Informatics, of 866 U.S.-based adults who had sent remittances within the previous year, 26% reported using stablecoins for cross-border transfers, with 34% also using other methods. According to Chainalysis, due to the volatility of the Venezuelan ...",
+    "age": "2 days ago",
+    "publishedAt": "2026-10-20T02:18:47.000Z"
+   },
+   {
+    "title": "Build with Local Stablecoins - Celo Docs",
+    "url": "https://docs.celo.org/build/build-with-local-stablecoin",
+    "description": "Price stability \u2014 unlike volatile cryptocurrencies, stablecoins hold a predictable value. Local denomination \u2014 users hold and spend in their own currency instead of converting to and from dollars. Low-cost transactions \u2014 sub-cent fees make small transfers and micropayments practical. Borderless access \u2014 send and receive globally without a bank account. Programmability \u2014 use them in smart contracts for lending, savings, payroll, and remittances.",
+    "age": "2 weeks ago",
+    "publishedAt": "2026-10-06T17:44:56.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0x8d5f024ddce55cc434d9258bf3f4090ed201fdd230d8d9ccb50b0868c8d4b6ad",
+ "settlement_block": 80708659,
+ "attempts": 2,
+ "note": "Attempt 1 (19:02 UTC) was refused pre-settlement: 402 with payment-required error \"[Solvador (Celo primary)] Facilitator verify failed (525)\" (Cloudflare SSL handshake on the seller-side facilitator). Nothing charged (balance unchanged 91277); retried once after 60s and it settled."
+}
