@@ -1,0 +1,45 @@
+{
+ "date": "2026-10-23",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Ecuador stablecoin remittances Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 81277,
+ "usdc_after_atomic": 71277,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.081277,
+ "usdc_after": 0.071277,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Ecuador stablecoin remittances Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "What Is Celo? Mobile-First L2 and Stablecoin Rails | Support",
+    "url": "https://eco.com/support/en/articles/15183710-what-is-celo-mobile-first-l2-and-stablecoin-rails",
+    "description": "The network uses phone-number-based address discovery, native dollar and euro stablecoins issued by the Mento protocol, and lets users pay gas in stablecoins or USDC instead of ETH. It hosts roughly $150M in TVL as of mid-2026 per DeFiLlama, with most activity in remittances, payroll, and savings ...",
+    "age": "September 16, 2026",
+    "publishedAt": "2026-09-16T00:00:00.000Z"
+   },
+   {
+    "title": "Build with Local Stablecoins - Celo Docs",
+    "url": "https://docs.celo.org/build/build-with-local-stablecoin",
+    "description": "Price stability \u2014 unlike volatile cryptocurrencies, stablecoins hold a predictable value. Local denomination \u2014 users hold and spend in their own currency instead of converting to and from dollars. Low-cost transactions \u2014 sub-cent fees make small transfers and micropayments practical. Borderless access \u2014 send and receive globally without a bank account. Programmability \u2014 use them in smart contracts for lending, savings, payroll, and remittances.",
+    "age": "2 weeks ago",
+    "publishedAt": "2026-10-06T17:44:56.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0x3ae6fd68629f67429e2ce35612275937eab2edf05d24f5c76bab861e75ea24dc",
+ "settlement_block": 80794973,
+ "attempts": 1,
+ "note": "First-call success, one signature. The in-process post-call balanceOf read returned 81277 (same block the transfer landed in, Forno lag); the receipt balance is the on-chain value re-read after block 80794973, verified against the settlement tx (status 1, transferWithAuthorization on USDC)."
+}
