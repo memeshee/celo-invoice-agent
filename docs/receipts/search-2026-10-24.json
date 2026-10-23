@@ -1,0 +1,45 @@
+{
+ "date": "2026-10-24",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Bolivia stablecoin remittances Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 71277,
+ "usdc_after_atomic": 61277,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.071277,
+ "usdc_after": 0.061277,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Bolivia stablecoin remittances Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "Tether leads Belo's $14 million raise to expand stablecoin payments across Latin America",
+    "url": "https://www.coindesk.com/business/2026/04/28/tether-leads-belo-s-usd14-million-raise-to-expand-stablecoin-payments-across-latin-america",
+    "description": "Belo, a Latin America-focused digital wallet that uses crypto rails for payments, has raised $14 million in a Series A round led by stablecoin issuer Tether. The round included Titan Fund, The Venture City, Mindset Ventures and G2. The company plans to use the funds to expand into Mexico, Chile, ...",
+    "age": "April 29, 2026",
+    "publishedAt": "2026-04-29T11:13:32.000Z"
+   },
+   {
+    "title": "What Is Celo? Mobile-First L2 and Stablecoin Rails | Support",
+    "url": "https://eco.com/support/en/articles/15183710-what-is-celo-mobile-first-l2-and-stablecoin-rails",
+    "description": "The network uses phone-number-based address discovery, native dollar and euro stablecoins issued by the Mento protocol, and lets users pay gas in stablecoins or USDC instead of ETH. It hosts roughly $150M in TVL as of mid-2026 per DeFiLlama, with most activity in remittances, payroll, and savings ...",
+    "age": "September 16, 2026",
+    "publishedAt": "2026-09-16T00:00:00.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xe74b4ecf4872c8579a76d9d25bbec6727957d9a2ad6acc17ed7ace86204e1499",
+ "settlement_block": 80881351,
+ "attempts": 1,
+ "elapsed_s": 4.71
+}
