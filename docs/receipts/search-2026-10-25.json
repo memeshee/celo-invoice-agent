@@ -1,0 +1,45 @@
+{
+ "date": "2026-10-25",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Uruguay stablecoin B2B invoicing Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 61277,
+ "usdc_after_atomic": 51277,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.061277,
+ "usdc_after": 0.051277,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Uruguay stablecoin B2B invoicing Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "How to Buy Celo (CELO) in Uruguay with Credit Card Online",
+    "url": "https://www.bitget.com/how-to-buy/celo/uruguay",
+    "description": "Step-by-step guide with videos for beginners on how to buy Celo in Uruguay with a credit card. Learn to buy CELO and other crypto instantly and safely.",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "Best B2B Stablecoin Invoicing Tools 2026 | Support",
+    "url": "https://eco.com/support/en/articles/14895620-best-b2b-stablecoin-invoicing-tools-2026",
+    "description": "Finance teams send invoices for SaaS subscriptions, contractor payments, and cross-border services in stablecoins because settlement clears the same business day for less than a dollar of network fee. The catch: most \"crypto invoicing\" products are checkout widgets dressed up as invoices. A real B2B invoicing tool needs PDF rendering, recurring billing, accounting export, and a KYC story your auditor will sign off on.",
+    "age": "July 16, 2026",
+    "publishedAt": "2026-07-16T00:00:00.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0x094a3177cea4bf04bae797a14e815ae1a64122ecd47a12d4f1034e59a0df0e50",
+ "settlement_block": 80967719,
+ "attempts": 1,
+ "elapsed_s": 4.23
+}
