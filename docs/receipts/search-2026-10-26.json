@@ -1,0 +1,47 @@
+{
+ "date": "2026-10-26",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Paraguay stablecoin B2B invoicing Celo",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 51277,
+ "usdc_after_atomic": 41277,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.051277,
+ "usdc_after": 0.041277,
+ "usdc_spent": 0.01,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Paraguay stablecoin B2B invoicing Celo",
+  "count": 2,
+  "results": [
+   {
+    "title": "Best B2B Stablecoin Invoicing Tools 2026 | Support",
+    "url": "https://eco.com/support/en/articles/14895620-best-b2b-stablecoin-invoicing-tools-2026",
+    "description": "Finance teams send invoices for SaaS subscriptions, contractor payments, and cross-border services in stablecoins because settlement clears the same business day for less than a dollar of network fee. The catch: most \"crypto invoicing\" products are checkout widgets dressed up as invoices. A real B2B invoicing tool needs PDF rendering, recurring billing, accounting export, and a KYC story your auditor will sign off on.",
+    "age": "July 16, 2026",
+    "publishedAt": "2026-07-16T00:00:00.000Z"
+   },
+   {
+    "title": "B2B Stablecoin Payments: How Businesses Settle in USDC and USDT | Support",
+    "url": "https://eco.com/support/en/articles/14856049-b2b-stablecoin-payments-how-businesses-settle-in-usdc-and-usdt",
+    "description": "B2B stablecoin payments settle invoices, payroll, and supplier payouts in USDC or USDT instead of wire/ACH/SWIFT. Covers the rails, the acceptance + treasury stack, customer patterns, and compliance.",
+    "age": "3 weeks ago",
+    "publishedAt": "2026-10-06T14:10:36.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xc348d7e3b680223803f5d1c49d34ccd581a4b114841cd07d3361dfeb723628f4",
+ "settlement_block": 81054116,
+ "settlement_status": "0x1",
+ "attempts": 1,
+ "elapsed_s": 5.97
+}
