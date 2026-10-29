@@ -37,3 +37,11 @@ jobs:
       - name: Settlement claims still verify (advisory, needs mainnet)
         continue-on-error: true
         run: python scripts/verify_settlements.py
+
+      # Dependency CVEs, advisory: a transitive advisory should be visible, not
+      # silently block every push on a day when the registry publishes one.
+      - name: Dependency audit (advisory)
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt

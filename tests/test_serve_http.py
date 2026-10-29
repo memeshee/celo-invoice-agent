@@ -111,3 +111,29 @@ def test_settled_invoice_page_shows_the_explorer_link(base_url):
     store.mark_settled(inv["id"], "0x" + "cd" * 32)
     code, _, body = get(f"{base_url}/i/{inv['id']}")
     assert code == 200 and "blockscout.com/tx/0xcdcd" in body
+
+
+def test_agent_card_is_machine_readable(base_url):
+    code, headers, body = get(base_url + "/agent.json")
+    data = json.loads(body)
+    assert code == 200 and headers["Content-Type"].startswith("application/json")
+    assert data["registrations"][0]["agentId"]
+    assert data["registrations"][0]["agentRegistry"].startswith("eip155:42220:")
+    ids = [c["id"] for c in data["capabilities"]]
+    assert "invoice.proof" in ids and "settlement.proof" in ids
+    assert data["settlement"]["chain"] == "eip155:42220"
+
+
+def test_invoice_proof_endpoint_returns_the_verdict(base_url, monkeypatch):
+    from bot import verify
+    inv = _invoice()
+    monkeypatch.setattr(verify, "payment_proof",
+                        lambda i, tx=None, web3=None: {"ok": True, "reason": "verified",
+                                                       "id": i["id"]})
+    code, _, body = get(f"{base_url}/api/invoice/{inv['id']}/proof")
+    assert code == 200 and json.loads(body)["ok"] is True
+
+
+def test_invoice_proof_endpoint_404s_for_an_unknown_invoice(base_url):
+    code, _, body = get(base_url + "/api/invoice/INV-9999-NOPE/proof")
+    assert code == 404 and json.loads(body)["error"] == "unknown invoice"

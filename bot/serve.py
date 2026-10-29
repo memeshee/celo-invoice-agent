@@ -40,6 +40,7 @@ EXPLORER_TX = "https://celo.blockscout.com/tx/"
 
 INVOICE_PATH = re.compile(r"^/i/([A-Za-z0-9-]{4,64})$")
 API_PATH = re.compile(r"^/api/invoice/([A-Za-z0-9-]{4,64})$")
+PROOF_API_PATH = re.compile(r"^/api/invoice/([A-Za-z0-9-]{4,64})/proof$")
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -140,6 +141,37 @@ def proof_data(*, verifier=None, use_cache: bool = True) -> dict:
 def services_verify():
     from . import verify
     return verify.payment_proof
+
+
+def agent_card() -> dict:
+    """A machine-readable mirror of the onchain ERC-8004 card.
+
+    Another agent should be able to discover what this one does without an indexer
+    or a chain read. Kept deliberately close to the onchain metadata shape.
+    """
+    return {
+        "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+        "name": "Celo Invoice Agent",
+        "description": ("Turns one sentence into a settled stablecoin payment on Celo. "
+                        "Prices invoices, buys its own sanctions screening over x402, "
+                        "and proves settlement from the chain."),
+        "active": True,
+        "x402Support": False,
+        "services": [{"name": "web", "endpoint": PUBLIC_BASE_URL}],
+        "registrations": [{"agentId": AGENT_ID,
+                           "agentRegistry": f"eip155:42220:{IDENTITY_REGISTRY}"}],
+        "capabilities": [
+            {"id": "invoice.create", "via": "telegram", "endpoint": "https://t.me/notcelordbot"},
+            {"id": "invoice.screen", "decides": "settle|review|block",
+             "buys": ["sanctions-name", "sanctions-wallet", "fx-rate"]},
+            {"id": "invoice.proof", "endpoint": "/api/invoice/{id}/proof"},
+            {"id": "settlement.proof", "endpoint": "/proof"},
+        ],
+        "settlement": {"chain": "eip155:42220", "pay_to": os.environ.get("INVOICE_WALLET", ""),
+                       "assets": ["USAT", "USDC", "wBRL", "wARS", "wCOP", "wPEN", "wMXN", "wCLP"]},
+        "attribution": {"standard": "ERC-8021", "code": os.environ.get("CELO_ATTRIBUTION_CODE",
+                                                                       "celo_invoiceagent")},
+    }
 
 
 def render_proof(data: dict) -> str:
@@ -546,6 +578,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(404, {"error": "unknown invoice"})
                 return
             self._json(200, invoice_payload(inv))
+            return
+        proof_api = PROOF_API_PATH.match(path)
+        if proof_api:
+            inv = store.get(proof_api.group(1))
+            if not inv:
+                self._json(404, {"error": "unknown invoice"})
+                return
+            # The same proof the watcher and the audit use, exposed so another
+            # agent can check our claim instead of trusting it.
+            from . import verify
+            self._json(200, verify.payment_proof(inv))
+            return
+        if path == "/agent.json":
+            self._json(200, agent_card())
             return
         page = INVOICE_PATH.match(path)
         if page:
