@@ -70,9 +70,17 @@ def test_a_third_party_payment_verifies():
     assert out["source"] == "rpc" and out["reason"] == "verified"
 
 
-def test_overpayment_still_verifies():
-    out = verify.payment_proof(_invoice(), web3=FakeW3(logs=[_transfer_log(value=99_000_000)]))
-    assert out["ok"] is True and out["value"] == 99_000_000
+def test_a_small_overpayment_verifies():
+    out = verify.payment_proof(_invoice(), web3=FakeW3(logs=[_transfer_log(value=10_400_000)]))
+    assert out["ok"] is True          # within the 5% tolerance
+
+
+def test_a_large_overpayment_is_refused_not_credited():
+    """"At least this amount" let a 0.998543 USA₮ bridge delivery pay a 0.1 invoice."""
+    invoice = _invoice()
+    out = verify.payment_proof(invoice, web3=FakeW3(logs=[_transfer_log(value=99_000_000)]))
+    assert out["ok"] is False
+    assert "amount mismatch" in out["reason"] and out["overpaid"] == 99_000_000
 
 
 # ---------------------------------------------------------------- refusals

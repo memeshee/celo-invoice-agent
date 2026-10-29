@@ -272,9 +272,13 @@ async def check(update: Update, ctx) -> None:
     if not inv:
         await msg.reply_text("Unknown invoice.")
         return
-    if inv["status"] == "settled":
-        # Settlement is terminal; re-scanning must not re-bind the witness.
-        await msg.reply_text(f"{inv['id']} already settled: {inv['settlement_tx']}")
+    if inv["status"] != "open":
+        # Held, blocked and dropped invoices must not be settleable by hand: the
+        # whole point of holding one is that the money must not move.
+        await msg.reply_text(
+            f"{inv['id']} is '{inv['status']}', so it cannot be settled. "
+            "A held invoice needs an operator to /release it first."
+        )
         return
     from . import x402
     wallet = store.payout_for(inv)
@@ -305,8 +309,26 @@ async def check(update: Update, ctx) -> None:
             f"Send {req['amount_display']} {req['symbol']} to `{wallet}`, then /check again."
         )
         return
+    # /check used to trust the same mechanical filter the watcher had to stop
+    # trusting: recipient + token + amount does not prove someone else paid. One
+    # definition of "was this paid", or the two paths disagree about the truth.
+    from . import verify
+    witness = None
+    refusal = ""
+    for candidate in sorted(fresh, key=lambda h: h.get("block") or 0):
+        proof = verify.payment_proof(inv, tx=candidate["tx"])
+        if proof["ok"]:
+            witness = candidate
+            break
+        refusal = proof["reason"]
+    if witness is None:
+        await msg.reply_text(
+            f"{inv['id']}: a transfer was found but it does not prove payment — {refusal}. "
+            "Nothing was settled."
+        )
+        return
     inv_id = inv["id"]
-    settled = store.mark_settled(inv_id, fresh[0]["tx"])
+    settled = store.mark_settled(inv_id, witness["tx"])
     if settled is None:
         await msg.reply_text(
             f"{inv_id}: that transfer already settled another invoice. "

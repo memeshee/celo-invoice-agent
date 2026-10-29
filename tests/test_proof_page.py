@@ -12,7 +12,8 @@ from bot import serve, store
 
 PAY_TO = "0x86E95581E41946ED84956433a8a9c836bCbA636c"
 AGENT = "0xdbfe5c4d0256d2459bb216cab905999ca41be349"
-STRANGER = "0x86fea35d806b1b3ff4b7d55d934733f89c1832f0"
+STRANGER = "0x1111111111111111111111111111111111111111"
+BRIDGE = "0x86fea35d806b1b3ff4b7d55d934733f89c1832f0"   # ours, via Squid
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +62,37 @@ def test_payments_from_our_own_wallets_are_not_called_independent(monkeypatch):
         assert row["independent"] is expected, payer
         assert data["counts"]["independent"] == (1 if expected else 0)
         serve._PROOF_CACHE.update(at=0.0, data=None)
+
+
+def test_the_bridge_funding_wallet_is_not_an_independent_payer():
+    """It was published as one, because the old check knew only two addresses."""
+    _settled()
+    data = serve.proof_data(
+        verifier=lambda i: {"ok": True, "from": BRIDGE, "pay_to": PAY_TO},
+        use_cache=False)
+    row = data["settlements"][0]
+    assert row["payer_kind"] == "builder-funded" and row["independent"] is False
+    assert data["counts"]["independent"] == 0
+    assert "builder-funded" in serve.render_proof(data)
+
+
+def test_a_verifier_refusal_is_labelled_unverified():
+    _settled()
+    data = serve.proof_data(
+        verifier=lambda i: {"ok": False, "from": STRANGER, "pay_to": PAY_TO,
+                            "reason": "amount mismatch"},
+        use_cache=False)
+    assert data["settlements"][0]["payer_kind"] == "unverified"
+    assert data["counts"]["independent"] == 0
+
+
+def test_the_index_page_admits_when_nothing_is_independent():
+    _settled()
+    data = serve.proof_data(
+        verifier=lambda i: {"ok": True, "from": AGENT, "pay_to": PAY_TO},
+        use_cache=False)
+    html = serve.render_index(data)
+    assert "builder-funded" in html
 
 
 def test_purchases_are_counted_with_their_proof():

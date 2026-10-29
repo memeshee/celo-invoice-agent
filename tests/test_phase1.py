@@ -23,6 +23,12 @@ def tmp_store(tmp_path, monkeypatch):
     return tmp_path
 
 
+@pytest.fixture(autouse=True)
+def _no_screening(monkeypatch):
+    """The paid screen has its own tests; here it is off so matching is isolated."""
+    monkeypatch.setenv("SERVICES_ENRICH", "0")
+
+
 @pytest.fixture
 def fixed_rate(monkeypatch):
     """Pin BRL at 5.00 per USD so 500 BRL == 100.000000 USAT exactly."""

@@ -1,0 +1,25 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-origin": "*",
+    "access-control-expose-headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, WWW-Authenticate, Payment-Receipt, X-Cache, X-Credits-Balance, X-Metered-Usd, X-Idempotent-Replay, X-Replayed-Answer, Retry-After, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-Id, Link, X-Total-Count, X-Async-Recommended, Location, Preference-Applied",
+    "Cache-Control": "no-store, private",
+    "Content-Type": "application/json; charset=utf-8",
+    "Date": "Thu, 29 Oct 2026 13:52:16 GMT",
+    "etag": "W/\"290-3IkRhk8ERN4U/ZiMY1xMfanIs8U\"",
+    "payment-response": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4RGJGZTVjNGQwMjU2RDI0NTliQjIxNmNhQjkwNTk5OUNhNDFiRTM0OSIsInRyYW5zYWN0aW9uIjoiMHhlNjRlNmRkYTQxYTM1MWE4MDBiZTY4MDUwZWQ1NWI2NWU3ZWIwMDY5NjRlMjNmMzY4NDJmNmI3N2VhZTNiYTdiIiwibmV0d29yayI6ImVpcDE1NTo0MjIyMCJ9",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "Server": "railway-hikari",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "vary": "Accept-Encoding",
+    "x-content-type-options": "nosniff",
+    "x-railway-request-id": "RfTy521ASaKEpzvr2prcFg",
+    "x-request-id": "ccc0f6c2-5c8c-4943-8ccb-b340c24c9ec5",
+    "Content-Encoding": "gzip",
+    "x-hikari-trace": "sin1.462z",
+    "x-railway-edge": "sin1",
+    "Transfer-Encoding": "chunked",
+    "Connection": "keep-alive"
+  },
+  "text": "{\"query\":\"Kiter (demo BR)\",\"verdict\":\"no_match_on_lists_checked\",\"exactCount\":0,\"containsCount\":0,\"allTokensCount\":0,\"matches\":[],\"entriesOnList\":19484,\"listsChecked\":[{\"list\":\"OFAC SDN\",\"authority\":\"US Treasury OFAC\",\"url\":\"https://sanctionslist.ofac.treas.gov/\"}],\"listsFetchedAt\":\"2026-10-29T07:01:55.061Z\",\"notAClearance\":\"this value does not appear on the lists named in `listsChecked`, as of the dates in `listsFetchedAt`. That is NOT a clearance: lists change without notice, entities appear under many spellings, and ownership rules put parties in scope who are named on no list. Use this as one input to your own screening, never as the decision\"}"
+}

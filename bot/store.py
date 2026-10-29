@@ -201,8 +201,15 @@ def set_services(inv_id: str, status: str, enrichment: dict | None = None) -> di
         inv["screened_at"] = enrichment.get("at")
         if enrichment.get("blocked"):
             # A sanctions hit stops the money. It is not a warning label.
-            inv["status"] = "blocked"
-            inv["blocked_reason"] = enrichment.get("reason")
+            if inv["status"] in ("settled", "dropped"):
+                # Too late: the money already moved, and a settled invoice staying
+                # settled is worth more than a retroactive status change that also
+                # hid it from /proof and left the witness consumed.
+                inv["blocked_reason"] = enrichment.get("reason")
+                inv["screening_flag_after_settlement"] = True
+            else:
+                inv["status"] = "blocked"
+                inv["blocked_reason"] = enrichment.get("reason")
     _save(db)
     return inv
 
@@ -225,6 +232,10 @@ def mark_settled(inv_id: str, tx_hash: str) -> dict | None:
         return None
     if inv["status"] == "settled":
         return inv  # terminal: never re-bind settlement_tx on a re-check
+    if inv["status"] != "open":
+        # held / blocked / dropped: the refusal has to survive the discovery of a
+        # transfer, or holding an invoice means nothing.
+        return None
     used = db.setdefault("used_tx", {})
     key = str(tx_hash).lower()
     owner = used.get(key)

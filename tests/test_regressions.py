@@ -54,6 +54,12 @@ from bot import buy, jev, main, store, x402  # noqa: E402
 
 # ------------------------------------------------------------------ fixtures
 @pytest.fixture(autouse=True)
+def _no_screening(monkeypatch):
+    """Screening has its own tests; these cover matching and settlement paths."""
+    monkeypatch.setenv("SERVICES_ENRICH", "0")
+
+
+@pytest.fixture(autouse=True)
 def isolated_state(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "STORE_PATH", str(tmp_path / "invoices.json"))
     monkeypatch.setattr(buy, "SPEND_LEDGER", str(tmp_path / "ledger.json"))
@@ -369,6 +375,7 @@ def test_one_transfer_settles_at_most_one_invoice(monkeypatch):
     wallet = os.environ["INVOICE_WALLET"]
     tx = "bb" * 32
     install_chain(monkeypatch, [transfer_log(wallet, 100_000_000, tx=tx)])
+    install_proof(monkeypatch)
     a = mint(dict(DRAFT, recipient="A"), created_block=14000)
     b = mint(dict(DRAFT, recipient="B"), created_block=14000)
     update, ctx = cmd([a["id"]])
@@ -378,6 +385,14 @@ def test_one_transfer_settles_at_most_one_invoice(monkeypatch):
     run(main.check(update, ctx))
     assert store.get(b["id"])["status"] == "open"
     assert store.tx_used(store.get(a["id"])["settlement_tx"]) == a["id"]
+
+
+def install_proof(monkeypatch, ok=True, reason="verified"):
+    """Inject the onchain verdict: /check asks bot.verify, not the transfer list."""
+    from bot import verify
+    monkeypatch.setattr(verify, "payment_proof",
+                        lambda inv, tx=None, web3=None: {"ok": ok, "reason": reason,
+                                                         "from": "0x" + "22" * 20})
 
 
 def test_store_refuses_to_rebind_a_consumed_tx():
@@ -390,6 +405,7 @@ def test_store_refuses_to_rebind_a_consumed_tx():
 def test_recheck_does_not_rewrite_a_settled_invoice(monkeypatch):
     wallet = os.environ["INVOICE_WALLET"]
     install_chain(monkeypatch, [transfer_log(wallet, 100_000_000, tx="cc" * 32)])
+    install_proof(monkeypatch)
     inv = mint(created_block=14000)
     update, ctx = cmd([inv["id"]])
     run(main.check(update, ctx))
@@ -400,7 +416,7 @@ def test_recheck_does_not_rewrite_a_settled_invoice(monkeypatch):
     after = store.get(inv["id"])
     assert after["settlement_tx"] == first
     assert after["status"] == "settled"
-    assert "already settled" in update.message.sent
+    assert "cannot be settled" in update.message.sent
 
 
 def test_underpaid_transfer_does_not_settle(monkeypatch):
@@ -542,3 +558,27 @@ def test_budget_url_is_threaded_into_paid_session(monkeypatch):
     with pytest.raises(RuntimeError, match="stop before network"):
         buy.pay_and_call("https://agent402.tools/api/paid")
     assert seen["url"] == "https://agent402.tools/api/paid"
+
+
+def test_check_refuses_a_witness_the_chain_does_not_back(monkeypatch):
+    """/check used to trust recipient+token+amount; the watcher had stopped."""
+    wallet = os.environ["INVOICE_WALLET"]
+    install_chain(monkeypatch, [transfer_log(wallet, 100_000_000)])
+    install_proof(monkeypatch, ok=False, reason="initiated by the payout address itself")
+    inv = mint(created_block=14000)
+    update, ctx = cmd([inv["id"]])
+    run(main.check(update, ctx))
+    assert store.get(inv["id"])["status"] == "open"
+    assert "does not prove payment" in update.message.sent
+
+
+def test_check_refuses_a_held_invoice(monkeypatch):
+    wallet = os.environ["INVOICE_WALLET"]
+    install_chain(monkeypatch, [transfer_log(wallet, 100_000_000)])
+    install_proof(monkeypatch)
+    held = store.create(dict(DRAFT), {"decision": "review", "risk_level": "review"},
+                        "user7", payout_address=wallet, status="held")
+    update, ctx = cmd([held["id"]])
+    run(main.check(update, ctx))
+    assert store.get(held["id"])["status"] == "held"
+    assert "cannot be settled" in update.message.sent

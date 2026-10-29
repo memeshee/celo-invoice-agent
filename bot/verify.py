@@ -19,6 +19,7 @@ Blockscout v2 as fallback, so a flaky node cannot manufacture a failure either.
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.request
 
@@ -27,6 +28,11 @@ from . import chain, store, x402
 TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 BLOCKSCOUT_TX = "https://celo.blockscout.com/api/v2/transactions/"
 UA = "celo-invoice-agent/1.0"
+
+# A payment must match the invoice, not merely exceed it. Accepting "at least"
+# meant a 0.1 USD invoice was marked paid by a 0.998543 USA₮ bridge delivery that
+# had nothing to do with it — real money passing the payee, wrongly credited.
+MAX_OVERPAY_BPS = int(os.environ.get("MAX_OVERPAY_BPS", "500"))   # 5%
 
 
 def _topic_addr(topic: str) -> str:
@@ -121,10 +127,20 @@ def payment_proof(invoice: dict, *, tx: str | None = None, web3=None) -> dict:
         out["reason"] = ("transaction was initiated by the payout address itself "
                          "(swap/top-up, not a payment)")
         return out
+    ceiling = want_value * (10_000 + MAX_OVERPAY_BPS) // 10_000
     for frm, to, value in transfers:
-        if to == pay_to.lower() and value >= want_value and frm != pay_to.lower():
+        if to == pay_to.lower() and want_value <= value <= ceiling and frm != pay_to.lower():
             out.update(ok=True, value=value, reason="verified")
             return out
+    overpaid = [(frm, to, value) for frm, to, value in transfers
+                if to == pay_to.lower() and value > ceiling and frm != pay_to.lower()]
+    if overpaid:
+        # Money arrived, but not this invoice's amount. Settling it anyway is how
+        # a bridge transfer got credited as a customer payment; say so and stop.
+        out["reason"] = (f"amount mismatch: {overpaid[0][2]} atomic arrived for an invoice of "
+                         f"{want_value} (>{MAX_OVERPAY_BPS / 100:.0f}% over) — needs a human")
+        out["overpaid"] = overpaid[0][2]
+        return out
     out["reason"] = (f"no {req.get('symbol')} payment to {pay_to[:10]}… of at least "
                      f"{want_value} (saw {len(transfers)} transfers)")
     return out

@@ -18,6 +18,8 @@ WBRL = x402.ASSETS["wBRL"]["asset"].lower()
 def tmp_store(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "STORE_PATH", str(tmp_path / "invoices.json"))
     monkeypatch.setenv("INVOICE_WALLET", PAY_TO)
+    # The paid screen has its own tests; here it is off so matching is isolated.
+    monkeypatch.setenv("SERVICES_ENRICH", "0")
     return tmp_path
 
 

@@ -53,6 +53,17 @@ def desired(meta: dict) -> dict:
     """Current metadata plus the parts that are only true now."""
     out = dict(meta)
     base = PUBLIC_BASE_URL
+    # The registered description said invoices "settle over Celo's x402
+    # facilitator". They do not: a payer sends a plain ERC-20 transfer and we prove
+    # it from the chain. x402 is what the agent spends, not what it receives — and
+    # the card is the first thing an ERC-8004-aware judge reads.
+    out["description"] = (
+        "Turns one sentence ('charge Marco 500 BRL for the logo, due Friday') into a "
+        "settled stablecoin payment on Celo. Invoices settle as plain ERC-20 "
+        "transfers to the freelancer's wallet and are proven from the chain, never "
+        "from a claim; the agent buys its per-invoice sanctions screening and FX "
+        "cross-check over x402, and a sanctions hit blocks settlement."
+    )
     out["services"] = [
         # The invoice pages and the /proof page are real, public, and answer 200.
         {"name": "web", "endpoint": base},
@@ -72,7 +83,9 @@ def main() -> int:
     from web3 import Web3
     meta = read_metadata(w3)
     new = desired(meta)
-    if meta.get("services") == new["services"] and meta.get("registrations") == new["registrations"]:
+    if (meta.get("services") == new["services"]
+            and meta.get("registrations") == new["registrations"]
+            and meta.get("description") == new["description"]):
         print("metadata already up to date — nothing to send")
         print(json.dumps(new.get("services"), indent=1))
         return 0

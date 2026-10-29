@@ -148,6 +148,24 @@ def transfers_to(address: str, *, fetcher=None, attempts: int = 3,
     raise RuntimeError("all transfer sources failed — " + ", ".join(errors))
 
 
+def _enrich_enabled() -> bool:
+    """Is the paid screening actually switched on for this deployment?"""
+    return str(os.environ.get("SERVICES_ENRICH", "1")).strip().lower() not in ("0", "false", "no")
+
+
+def screening_allows(invoice: dict) -> bool:
+    """Has the paid screening finished, or is it deliberately switched off?
+
+    Invoices are created with services_status="pending" while the agent is buying
+    its sanctions screens. Settling then would let a hit arrive after the money
+    did. With enrichment disabled, "pending" is just the creation default and must
+    not freeze settlement forever.
+    """
+    if not _enrich_enabled():
+        return True
+    return (invoice.get("services_status") or "") not in ("pending", "retry")
+
+
 def find_settlement(invoice: dict, transfers: list[dict], *, confirm=None) -> dict | None:
     """The transfer that settles this invoice, or None.
 
@@ -161,6 +179,13 @@ def find_settlement(invoice: dict, transfers: list[dict], *, confirm=None) -> di
     """
     pay_to = store.payout_for(invoice)
     if not pay_to:
+        return None
+    # The agent buys its screening before it is allowed to decide anything.
+    # Settling while that screen is still running would let a sanctions hit arrive
+    # after the money did, which is the one order that cannot be undone.
+    if invoice.get("status") != "open":
+        return None
+    if not screening_allows(invoice):
         return None
     try:
         req = x402.create_payment_request(invoice, pay_to)

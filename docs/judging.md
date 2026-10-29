@@ -32,13 +32,17 @@ reading the source first.
 
 ## Open Corridors / x402
 
-- **Real settlement between independent parties, proven:** `bot/verify.py` decides
-  whether an invoice was paid, from the chain — including a check that the paying
-  transaction was not initiated by the payee (a self-swap used to pass every
-  mechanical filter). `/proof` re-runs it on every render and labels our own money
-  as *builder-funded*.
-- **The number that matters is the honest one:** `/proof` reports
-  verified/total, not total.
+- **Settlement is proven, not claimed:** `bot/verify.py` is the single definition
+  of "was this paid" — the tx must exist, succeed, not be initiated by the payee,
+  and carry a Transfer of the right token to the payout address for the right
+  amount (within 5%: "at least" is not a payment). Both the watcher and `/check`
+  ask it, so the automated and manual paths cannot disagree.
+- **The number that matters is the honest one:** `/proof` reports verified/total
+  and labels each payment by payer class from an allowlist — `independent payer`,
+  `builder-funded`, or `unverified`. Today every payment is builder-funded, and
+  the page says so rather than counting our own money as a user.
+- **Claims that did not hold up are still in the README**, with the transaction and
+  the reason they were withdrawn. That is a better signal than a clean table.
 - **Attribution:** every transaction we sign carries the ERC-8021 Schema 0 suffix
   (`bot/attribution.py`), verified on the wire. x402 settlements cannot carry one
   (facilitator limitation), so the PayTo wallet is published in the README.

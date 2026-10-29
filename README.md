@@ -10,10 +10,13 @@ Built for the Celo *Agents on Open Rails* hackathon. Celo mainnet only.
 
 ![A live invoice page on Celo mainnet](docs/invoice-page.png)
 
-**A live one is open right now** — [open the invoice](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/i/INV-0006-D2064A)
-and press *Pay 0.05 USA₮*. The agent already screened it (two paid sanctions
-checks, receipts linked), and the page flips to settled by itself once the
-transfer lands — nobody has to be told.
+**Two are open right now**, screened, waiting for anyone to pay them:
+
+- [0.05 USDC](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/i/INV-0007-2782D9) — the asset a Celo wallet is most likely to hold
+- [25 wBRL](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/i/INV-0008-9E74F4) — the LatAm path, with a prefilled Ripio on-ramp link if you hold no stablecoin at all
+
+Both pages flip to settled by themselves once the transfer lands — nobody has to
+be told, and nothing is confirmed by hand.
 
 - **Live pages:** https://newsletter-effect-backgrounds-attribute.trycloudflare.com
   — [`/proof`](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/proof)
@@ -44,15 +47,16 @@ charge Marco 500 BRL for the logo, due Friday
         ├─ bot/serve.py ....... /i/<id> — Celo wallet deep link + EIP-681 + Ripio
         │                       on-ramp link, so someone with no stablecoin can pay.
         └─ bot/watch.py ....... polls Celo, then bot/verify.py proves the witness:
-                                right token, right recipient, right amount, and NOT a
-                                transaction the payee sent itself.
+                                right token, right recipient, the right amount
+                                (within 5% — "at least" is not a payment), and NOT
+                                a transaction the payee sent itself.
 ```
 
 ## Onchain activity you can check
 
 Every one of these is a real Celo mainnet transaction. `scripts/verify_settlements.py`
 re-derives the settlements from the chain, and the running service exposes the same
-check as a page: **`GET /proof`** re-verifies every claim on each render and labels
+check as a page: **`GET /proof`** re-verifies every claim (cached 60s) and labels
 payments from the builder's own wallets as *builder-funded* rather than counting
 them as users.
 
@@ -60,12 +64,13 @@ them as users.
 |---|---|
 | ERC-8004 agent identity registered (`agentId 10005`) | [`0x9c101fb0…2b70`](https://celoscan.io/tx/0x9c101fb0dcbfeba0d95c0172b22c996bec949a4d908b4daeaf486c0cd12b2b70) |
 | Agent card updated onchain to declare its live `web` service (`setAgentURI`, ERC-8021 tagged) | [`0xa9416d84…9b1e64`](https://celoscan.io/tx/0xa9416d841b049e3546bab955cff3388ef2b160b9f468f28342da557bea9b1e64) |
+| Agent card corrected onchain: it claimed invoices settle *over the x402 facilitator*; they settle as ERC-20 transfers | [`0xdcd801a4…adec1`](https://celoscan.io/tx/0xdcd801a45f54957a016047b8cd9fe7e1470dc4a9113804b14a97bd5e01eadec1) |
 | Invoice paid 0.02 USA₮ → settled autonomously, no human | [`0x8a19fcc4…c724c4`](https://celoscan.io/tx/0x8a19fcc4139524502b52cc25748b9a40bee64384d09986b8f809690b77c724c4) |
-| Invoice paid 0.998543 USA₮ (bridged in from another address) | [`0xe5796183…1073ee`](https://celoscan.io/tx/0xe5796183431382dd8e2e543b11140497420c8bb09cc35f5a24a52e76d731073e) |
+| **Withdrawn claim:** 0.998543 USA₮ arrived via a Squid bridge for a 0.1 USD invoice; the verifier refuses it as an amount mismatch | [`0xe5796183…1073ee`](https://celoscan.io/tx/0xe5796183431382dd8e2e543b11140497420c8bb09cc35f5a24a52e76d731073e) |
 | Agent buys an FX rate — $0.002 | [`0x1e2be36e…c51b4`](https://celoscan.io/tx/0x1e2be36e4eceb26a1908ccd1decbf35d29a5f411ab5dcf00c269e7fdad0c51b4) |
 | Agent buys a wallet sanctions screen — $0.002 | [`0x1f750f0e…ebad5b`](https://celoscan.io/tx/0x1f750f0e4ef3e5db04fbf3b5fbef8a67ecda043df5604ace31ffd2db72ebad5b) |
 | Agent buys a name sanctions screen — $0.005 | [`0x400ef3ae…2984dd`](https://celoscan.io/tx/0x400ef3ae497217f697fb6f151002085199ea726844d7382282567e38572984dd) |
-| Textile FX: 1 USDT → 5.006 wBRL, forwarded to the freelancer | [`0xcac8b05d…2eec9e0`](https://celoscan.io/tx/0xcac8b05db8899954f2e5a920d842ebca448d8e5ebc2eadc6c4096e0392eec9e0) |
+| Textile FX: 1 USDT → 5.006 wBRL, swapped **into the agent wallet** (the payout leg is not wired — see Limits) | [`0xcac8b05d…2eec9e0`](https://celoscan.io/tx/0xcac8b05db8899954f2e5a920d842ebca448d8e5ebc2eadc6c4096e0392eec9e0) |
 
 Paid-call receipts (raw 402 responses, headers and all) are committed under
 [`docs/receipts/`](docs/receipts).
@@ -87,7 +92,7 @@ rails work, not that a user showed up.
 | USDC | `0xcEBA9300f2b948710d2653dD7B07f33A8B32118C` |
 | USDT | `0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e` |
 | wBRL / wARS / wCOP (Ripio wFIAT, 18 dec) | `0xD76f5Faf6888e24D9F04Bf92a0c8B921FE4390e0` / `0x0DC4F92879B7670e5f4e4e6e3c801D229129D90D` / `0x8a1D45e102e886510e891d2Ec656a708991e2D76` |
-| x402 facilitator (asset table is read live) | `https://api.x402.celo.org` |
+| x402 facilitator (outbound only — we buy services; asset addresses are pinned in `bot/x402.py` and re-checked by tests) | `https://api.x402.celo.org` |
 
 **PayTo wallet** (the hackathon asks for this, since x402 settlements cannot
 carry an ERC-8021 attribution tag yet): `0x86E95581E41946ED84956433a8a9c836bCbA636c`
@@ -137,7 +142,7 @@ python scripts/verify_settlements.py --fix   # withdraw the ones that do not hol
 ## Tests
 
 ```bash
-python -m pytest            # 195 tests, offline: no network, no keys, no .env
+python -m pytest            # 204 tests, offline: no network, no keys, no .env
 python -m pytest -m network # live facilitator, Textile, agent402, Typesafe Jev
 python -m pytest -m live    # reads real Celo mainnet history
 ruff check .                # lint (E, F, W, I, B)
@@ -157,8 +162,10 @@ money: `bot/verify.py` (85%, every refusal path), the x402 spend budgets
   **500 wBRL for 500 BRL**: in kind, no FX, no dollar in the middle. The pay page
   carries a prefilled Ripio on-ramp link bound to the payout address, so a payer
   who has never held a stablecoin can still pay.
-- **Open Corridors: USA₮ over x402** — settlement is between independent wallets
-  and is proven per transaction; the asset is chosen per freelancer, not globally.
+- **Open Corridors: USA₮ over x402** — settlement is proven per transaction from
+  the chain, and the asset is chosen per freelancer rather than globally. Note
+  plainly: **every payment so far is builder-funded.** The rails are proven end to
+  end; an outside payer is still the gap, and `/proof` says so on the page.
 - **Build with `buy`** — every invoice costs the agent ~$0.009 in services it
   does not own, and those purchases gate whether money may move.
 
@@ -170,5 +177,12 @@ money: `bot/verify.py` (85%, every refusal path), the x402 spend budgets
   automatic payout leg. In-kind wBRL covers the "paid in reais" path today.
 - Invoice storage is a JSON file with one process writing it. Fine at demo scale,
   not multi-tenant safe.
-- x402 settlements carry no ERC-8021 tag (facilitator limitation) — hence the
-  PayTo wallet above. All other transactions we send are tagged.
+- x402 payments carry no ERC-8021 tag (facilitator limitation) — hence the PayTo
+  wallet above. All other transactions we send are tagged.
+- **No independent payer yet.** Every settlement so far came from a wallet we
+  control, and `/proof` labels it `builder-funded` rather than counting it as a
+  user. Both settlement claims that did not survive the verifier are recorded
+  above along with the reason.
+- The agent's sanctions screening gates settlement on the automated path and on
+  `/check`; the vendor's own receipt says its verdict is "not a clearance", so it
+  is a screen, not a compliance programme.

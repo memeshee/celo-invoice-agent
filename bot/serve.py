@@ -74,6 +74,33 @@ def _agent_address() -> str:
         return ""
 
 
+# Wallets whose money is ours. Everything else is a stranger.
+#
+# This is an allowlist now, not "payer != agent": the previous check knew only two
+# addresses, so a 0.998543 USA₮ delivery through a Squid bridge from our own
+# funding wallet was published as an independent payer. An allowlist that has to be
+# extended deliberately is the honest shape for this.
+BUILDER_WALLETS = {
+    "0xdbfe5c4d0256d2459bb216cab905999ca41be349",   # agent wallet (pays for services)
+    "0x86e95581e41946ed84956433a8a9c836bcba636c",   # invoice / payTo wallet
+    "0x86fea35d806b1b3ff4b7d55d934733f89c1832f0",   # builder's bridge funding wallet
+}
+
+
+def _builder_wallets() -> set[str]:
+    known = set(BUILDER_WALLETS)
+    agent = _agent_address()
+    if agent:
+        known.add(agent)
+    pay_to = (os.environ.get("INVOICE_WALLET") or "").strip().lower()
+    if pay_to:
+        known.add(pay_to)
+    for extra in (os.environ.get("BUILDER_WALLETS") or "").split(","):
+        if extra.strip():
+            known.add(extra.strip().lower())
+    return known
+
+
 def proof_data(*, verifier=None, use_cache: bool = True) -> dict:
     """Re-derive the onchain claims, and label our own money as our own.
 
@@ -88,7 +115,7 @@ def proof_data(*, verifier=None, use_cache: bool = True) -> dict:
         return _PROOF_CACHE["data"]
 
     check = verifier or services_verify()
-    agent = _agent_address()
+    builders = _builder_wallets()
     invoices = list(store._load()["invoices"].values())  # single read of the file
     settlements = []
     for inv in invoices:
@@ -96,7 +123,12 @@ def proof_data(*, verifier=None, use_cache: bool = True) -> dict:
             continue
         proof = check(inv)
         payer = (proof.get("from") or "").lower()
-        pay_to = (proof.get("pay_to") or "").lower()
+        if not proof.get("ok"):
+            kind = "unverified"
+        elif payer and payer not in builders:
+            kind = "independent payer"
+        else:
+            kind = "builder-funded"
         settlements.append({
             "id": inv["id"],
             "amount_display": f"{inv.get('amount')} {str(inv.get('currency') or '').upper()}".strip(),
@@ -105,7 +137,8 @@ def proof_data(*, verifier=None, use_cache: bool = True) -> dict:
             "verified": bool(proof.get("ok")),
             "reason": proof.get("reason"),
             "payer": payer,
-            "independent": bool(proof.get("ok")) and payer not in {agent, pay_to} and payer != "",
+            "payer_kind": kind,
+            "independent": kind == "independent payer",
         })
     purchases = []
     for inv in invoices:
@@ -178,8 +211,8 @@ def render_proof(data: dict) -> str:
     c = data["counts"]
     rows = []
     for s in data["settlements"]:
-        badge = ("verified" if s["verified"] else "unverified")
-        who = "independent payer" if s["independent"] else "builder-funded"
+        badge = "verified" if s["verified"] else "unverified"
+        who = s["payer_kind"]
         link = (f'<a href="{_e(s["explorer"])}" target="_blank" rel="noreferrer">'
                 f'{_e((s["tx"] or "")[:12])}…</a>') if s["explorer"] else "—"
         rows.append(f'<div class="row"><dt>{_e(s["id"])} · {_e(s["amount_display"])}'
@@ -200,7 +233,7 @@ def render_proof(data: dict) -> str:
 .tag{{display:inline-block;margin-top:4px;font-size:11px;color:#94a3b8}}
 </style></head>
 <body><main class="card">
-  <p class="kicker">Re-verified on every render</p>
+  <p class="kicker">Re-verified from Celo · cached {PROOF_TTL_S}s</p>
   <h1 class="amount">{c['verified']}/{c['settled']}</h1>
   <p class="settle">settlement claims proven on Celo · {c['independent']} from an
   independent payer · {c['purchases']} paid service calls (${c['spent_usd']} spent by the agent)</p>
@@ -475,6 +508,9 @@ def render_index(stats: dict | None = None) -> str:
     purchases = counts.get("purchases")
     lived = (f"{verified}/{settled} settlements proven onchain · "
              f"{purchases} paid service calls") if settled else "no settlements yet"
+    if settled and not counts.get("independent"):
+        lived += (" · every payment so far is builder-funded: the rails work end"
+                  " to end, the users are still ours")
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

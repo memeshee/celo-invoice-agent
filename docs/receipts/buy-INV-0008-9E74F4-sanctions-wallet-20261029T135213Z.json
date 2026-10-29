@@ -1,0 +1,25 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-origin": "*",
+    "access-control-expose-headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, WWW-Authenticate, Payment-Receipt, X-Cache, X-Credits-Balance, X-Metered-Usd, X-Idempotent-Replay, X-Replayed-Answer, Retry-After, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-Id, Link, X-Total-Count, X-Async-Recommended, Location, Preference-Applied",
+    "Cache-Control": "no-store, private",
+    "Content-Type": "application/json; charset=utf-8",
+    "Date": "Thu, 29 Oct 2026 13:52:13 GMT",
+    "etag": "W/\"26d-rcLCqmLmOZFN6ojXFP31QEWW3kc\"",
+    "payment-response": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4RGJGZTVjNGQwMjU2RDI0NTliQjIxNmNhQjkwNTk5OUNhNDFiRTM0OSIsInRyYW5zYWN0aW9uIjoiMHhlOGY2ZGQzYWNmNWRlNDQ0MTQyNTRjNDBkMmY5OTc1MjUxYTM4NzZmMDU3ZTUzZGU1OTQ2Mjk3YWQ5MTNhZWIzIiwibmV0d29yayI6ImVpcDE1NTo0MjIyMCJ9",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "Server": "railway-hikari",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "vary": "Accept-Encoding",
+    "x-content-type-options": "nosniff",
+    "x-railway-request-id": "d-RMauUJSXm6tAF-LPU1MQ",
+    "x-request-id": "21906f98-c92b-4777-8046-adecf4ffc847",
+    "Content-Encoding": "gzip",
+    "x-hikari-trace": "sin1.nzn2",
+    "x-railway-edge": "sin1",
+    "Transfer-Encoding": "chunked",
+    "Connection": "keep-alive"
+  },
+  "text": "{\"address\":\"0x86e95581e41946ed84956433a8a9c836bcba636c\",\"verdict\":\"no_match_on_lists_checked\",\"addressesOnList\":1058,\"listsChecked\":[{\"list\":\"OFAC SDN\",\"authority\":\"US Treasury OFAC\",\"url\":\"https://sanctionslist.ofac.treas.gov/\"}],\"listsFetchedAt\":\"2026-10-29T07:01:55.061Z\",\"notAClearance\":\"this value does not appear on the lists named in `listsChecked`, as of the dates in `listsFetchedAt`. That is NOT a clearance: lists change without notice, entities appear under many spellings, and ownership rules put parties in scope who are named on no list. Use this as one input to your own screening, never as the decision\"}"
+}
