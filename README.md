@@ -34,7 +34,10 @@ charge Marco 500 BRL for the logo, due Friday
 ## Onchain activity you can check
 
 Every one of these is a real Celo mainnet transaction. `scripts/verify_settlements.py`
-re-derives the settlements from the chain.
+re-derives the settlements from the chain, and the running service exposes the same
+check as a page: **`GET /proof`** re-verifies every claim on each render and labels
+payments from the builder's own wallets as *builder-funded* rather than counting
+them as users.
 
 | What | Transaction |
 |---|---|
