@@ -24,7 +24,7 @@ import urllib.request
 
 from dotenv import load_dotenv
 
-from . import store, x402
+from . import services, store, x402
 
 load_dotenv()
 
@@ -111,6 +111,43 @@ def notify(chat_id: int | None, text: str, *, sender=None) -> bool:
         return False
 
 
+def enrich_pending(*, log=print, enricher=None, max_per_loop: int | None = None) -> list[dict]:
+    """Buy the services each pending invoice needs, then record what was bought.
+
+    Runs in the same daemon as settlement so there is one moving part, and
+    capped per loop so a burst of mints cannot drain the wallet in one pass.
+    """
+    if os.environ.get("SERVICES_ENRICH", "1") != "1":
+        return []
+    cap = max_per_loop if max_per_loop is not None else int(os.environ.get("ENRICH_MAX_PER_LOOP", "3"))
+    done = []
+    for inv in store.invoices_awaiting_services()[:cap]:
+        try:
+            enrichment = (enricher or services.enrich)(inv)
+        except Exception as e:  # noqa: BLE001
+            log(f"[services] enrichment crashed for {inv['id']}: {type(e).__name__}: {e}")
+            store.set_services(inv["id"], "error")
+            continue
+        status = "done" if any(r.get("ok") for r in enrichment["receipts"]) else "error"
+        updated = store.set_services(inv["id"], status, enrichment)
+        done.append(updated or {})
+        spent = enrichment.get("spent_usd")
+        bought = [r["slug"] for r in enrichment["receipts"] if r.get("ok")]
+        log(f"[services] {inv['id']} bought {bought} for ${spent}"
+            + (" — BLOCKED: " + str(enrichment.get('reason')) if enrichment["blocked"] else ""))
+        if updated:
+            if enrichment["blocked"]:
+                msg = (f"{inv['id']} blocked ❌\n"
+                       f"{enrichment.get('reason')}\n"
+                       f"Settlement is refused until a human clears it.")
+            else:
+                msg = (f"{inv['id']} screened ✅\n"
+                       f"Bought {len(bought)} services for ${spent}: {', '.join(bought)}\n"
+                       f"Payout wallet and counterparty came back clean.")
+            notify(updated.get("creator_chat_id"), msg)
+    return done
+
+
 def sweep(*, fetcher=None, notifier=None, log=print) -> list[dict]:
     """One pass over every open invoice. Returns settlements made."""
     settled = []
@@ -147,6 +184,10 @@ def sweep(*, fetcher=None, notifier=None, log=print) -> list[dict]:
 def main() -> None:
     print(f"[watch] polling every {POLL_INTERVAL_S}s", flush=True)
     while True:
+        try:
+            enrich_pending()
+        except Exception as e:  # noqa: BLE001
+            print(f"[watch] enrichment pass crashed: {type(e).__name__}: {e}", flush=True)
         try:
             sweep()
         except Exception as e:  # noqa: BLE001 — the loop must outlive any single pass

@@ -28,7 +28,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from dotenv import load_dotenv
 
-from . import store, x402
+from . import services, store, x402
 
 load_dotenv()  # the units run from the repo dir; .env is the single config source
 
@@ -55,6 +55,26 @@ SECURITY_HEADERS = {
 
 # ------------------------------------------------------------------- payloads
 
+def _screening(inv: dict) -> dict:
+    """What the agent bought for this invoice, compacted for display."""
+    receipts = inv.get("services") or []
+    return {
+        "status": inv.get("services_status"),
+        "spent_usd": inv.get("services_spent_usd"),
+        "blocked_reason": inv.get("blocked_reason"),
+        "checks": [{
+            "slug": r.get("slug"),
+            "ok": bool(r.get("ok")),
+            "verdict": (r.get("result") or {}).get("verdict"),
+            "clean": (r.get("result") or {}).get("clean"),
+            "tx": r.get("tx"),
+            "explorer": (EXPLORER_TX + r["tx"]) if r.get("tx") else None,
+            "verified": (r.get("onchain") or {}).get("verified"),
+            "why": r.get("why"),
+        } for r in receipts],
+    }
+
+
 def invoice_payload(inv: dict) -> dict:
     """Everything the page and the API need, priced once."""
     pay_to = store.payout_for(inv)
@@ -67,6 +87,7 @@ def invoice_payload(inv: dict) -> dict:
         "trust": inv.get("trust") or {},
         "settlement_tx": inv.get("settlement_tx"),
         "explorer": (EXPLORER_TX + inv["settlement_tx"]) if inv.get("settlement_tx") else None,
+        "screening": _screening(inv),
         "agent": {"id": AGENT_ID, "registry": IDENTITY_REGISTRY,
                   "registry_url": f"https://8004scan.io/agents/celo/{AGENT_ID}"},
     }
@@ -98,6 +119,11 @@ def invoice_payload(inv: dict) -> dict:
             f"?address={pay_to}&uint256={req['amount_atomic']}"
         ),
     })
+    if req.get("fx"):
+        # The rate the payer sees was cross-checked against a rate the agent
+        # BOUGHT; show the comparison rather than asking anyone to trust us.
+        out["fx_check"] = services.fx_crosscheck(
+            {"receipts": inv.get("services") or []}, req["fx"]["usd_per_unit"])
     return out
 
 
@@ -150,6 +176,13 @@ def render_invoice(payload: dict) -> str:
         code = (payload.get("invoice_amount") or "").split(" ")[-1]
         rows.append(("Rate", _e(f"1 USD ≈ {(1 / float(fx['usd_per_unit'])):.4f} {code}")))
         rows.append(("Rate as of", _e(fx.get("as_of") or "—")))
+    check = payload.get("fx_check")
+    if check and check.get("comparable"):
+        verdict = "agrees" if check.get("agrees") else "DIVERGES"
+        rows.append(("Rate cross-check",
+                     f"{verdict} · paid rate {check['drift_pct']}% off"
+                     + (f' · <a href="{EXPLORER_TX}{_e(check["tx"])}" target="_blank" '
+                        f'rel="noreferrer">paid</a>' if check.get("tx") else "")))
     if payload.get("pay_to"):
         rows.append(("Paid to", f'<span class="mono">{_e(_short(payload["pay_to"]))}</span>'))
     rows.append(("Settles on", "Celo mainnet · eip155:42220"))
@@ -160,9 +193,25 @@ def render_invoice(payload: dict) -> str:
     rows.append(("Trust screen",
                  _e(f"{(payload.get('trust') or {}).get('decision', '—')} "
                     f"(risk {(payload.get('trust') or {}).get('risk_level', '—')})")))
+    screening = payload.get("screening") or {}
+    for check in screening.get("checks") or []:
+        if not check.get("slug"):
+            continue
+        if str(check["slug"]).startswith("sanctions"):
+            # Only a screen has a pass/fail reading; a rate quote does not.
+            detail = check.get("verdict") or ("clean" if check.get("clean") else "failed")
+        else:
+            detail = "quoted" if check.get("ok") else "failed"
+        link = (f'<a href="{_e(check["explorer"])}" target="_blank" rel="noreferrer">'
+                f'receipt</a>') if check.get("explorer") else ""
+        rows.append((_e(check["slug"]), f"{_e(detail)}{(' · ' + link) if link else ''}"))
 
     if payload.get("error"):
         body = f'<div class="warn">{_e(payload["error"])}</div>'
+    elif status == "blocked":
+        body = ('<div class="warn"><b>Blocked by sanctions screening.</b><br>'
+                f'{_e(screening.get("blocked_reason") or "")}<br>'
+                'This invoice will not settle until a human clears it.</div>')
     elif status == "settled":
         body = '<div class="note" id="paid" style="color:#6ee7b7">Payment confirmed onchain.</div>'
     else:
@@ -190,6 +239,8 @@ def render_invoice(payload: dict) -> str:
   <div class="foot">
     Settled by an ERC-8004 agent · <span class="mono">agentId {AGENT_ID}</span> ·
     <a href="{REPO}" target="_blank" rel="noreferrer">source</a><br>
+    This invoice cost the agent <b>${_e(screening.get('spent_usd') or 0)}</b> in
+    services it does not own (rates + sanctions screening), each paid on Celo.<br>
     The agent watches Celo for this transfer and marks the invoice paid from
     chain data, never from a claim.
   </div>

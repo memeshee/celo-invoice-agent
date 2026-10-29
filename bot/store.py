@@ -98,6 +98,10 @@ def create(draft: dict, screen: dict, creator: str,
         },
         "status": "open",
         "settlement_tx": None,
+        # The agent buys its compliance layer per invoice, asynchronously —
+        # minting must not block on three paid calls.
+        "services_status": "pending",
+        "services": [],
     }
     db["invoices"][inv_id] = inv
     _save(db)
@@ -111,6 +115,31 @@ def get(inv_id: str) -> dict | None:
 def open_invoices() -> list[dict]:
     """Every invoice still awaiting settlement — the watcher's work queue."""
     return [i for i in _load()["invoices"].values() if i.get("status") == "open"]
+
+
+def invoices_awaiting_services() -> list[dict]:
+    """Invoices minted but not yet enriched with the services the agent buys."""
+    return [i for i in _load()["invoices"].values()
+            if i.get("services_status") in ("pending", "retry")]
+
+
+def set_services(inv_id: str, status: str, enrichment: dict | None = None) -> dict | None:
+    """Record what the agent bought for this invoice, and block it if need be."""
+    db = _load()
+    inv = db["invoices"].get(str(inv_id).upper())
+    if not inv:
+        return None
+    inv["services_status"] = status
+    if enrichment is not None:
+        inv["services"] = enrichment.get("receipts") or []
+        inv["services_spent_usd"] = enrichment.get("spent_usd")
+        inv["screened_at"] = enrichment.get("at")
+        if enrichment.get("blocked"):
+            # A sanctions hit stops the money. It is not a warning label.
+            inv["status"] = "blocked"
+            inv["blocked_reason"] = enrichment.get("reason")
+    _save(db)
+    return inv
 
 
 def tx_used(tx_hash: str) -> str | None:

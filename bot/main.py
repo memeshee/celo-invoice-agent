@@ -181,7 +181,9 @@ async def on_button(update: Update, _ctx) -> None:
         f"Payer sends: {settle}\n"
         f"Trust: {inv['trust']['decision']} ({inv['trust']['risk_level']})\n\n"
         f"Pay link (send it to your client):\n{pay_url(inv['id'])}\n\n"
-        f"The agent watches Celo and settles this by itself. /receipt {inv['id']}"
+        f"The agent now buys its own screening for this invoice\n"
+        f"(rate check + sanctions on the wallet and name, ≈$0.009) and watches\n"
+        f"Celo to settle it by itself. /receipt {inv['id']}"
     )
 
 
@@ -276,6 +278,26 @@ async def check(update: Update, ctx) -> None:
     )
 
 
+def services_block(inv: dict) -> str:
+    """What the agent bought for this invoice, for /receipt."""
+    receipts = inv.get("services") or []
+    status = inv.get("services_status")
+    if not receipts:
+        return f"\nServices bought: {status or 'none yet'}"
+    lines = [f"\nServices bought (${inv.get('services_spent_usd') or 0}):"]
+    for r in receipts:
+        if not r.get("ok"):
+            lines.append(f"  · {r.get('slug')} — failed ({r.get('error')})")
+            continue
+        verdict = (r.get("result") or {}).get("verdict") or "ok"
+        tx = (r.get("tx") or "")[:12]
+        verified = "✓onchain" if (r.get("onchain") or {}).get("verified") else "unverified"
+        lines.append(f"  · {r.get('slug')} — {verdict} ({verified}) {tx}…")
+    if inv.get("status") == "blocked":
+        lines.append(f"BLOCKED: {inv.get('blocked_reason')}")
+    return "\n".join(lines)
+
+
 async def receipt(update: Update, ctx) -> None:
     msg = must_msg(update)
     if not ctx.args:
@@ -290,6 +312,8 @@ async def receipt(update: Update, ctx) -> None:
         f"{inv['amount']} {inv['currency']} → {inv['recipient']}\n"
         f"Trust: {inv['trust']['decision']} ({inv['trust']['risk_level']})\n"
         f"Settlement: {inv['settlement_tx'] or 'pending'}"
+        f"{services_block(inv)}\n\n"
+        f"{pay_url(inv['id'])}"
     )
 
 

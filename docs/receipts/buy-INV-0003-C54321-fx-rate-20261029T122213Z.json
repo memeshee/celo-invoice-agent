@@ -1,0 +1,25 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-origin": "*",
+    "access-control-expose-headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, WWW-Authenticate, Payment-Receipt, X-Cache, X-Credits-Balance, X-Metered-Usd, X-Idempotent-Replay, X-Replayed-Answer, Retry-After, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-Id, Link, X-Total-Count, X-Async-Recommended, Location, Preference-Applied",
+    "Cache-Control": "no-store, private",
+    "Content-Type": "application/json; charset=utf-8",
+    "Date": "Thu, 29 Oct 2026 12:22:13 GMT",
+    "etag": "W/\"56-kgB++DIX3/l0R6VryO7i9S1KXTo\"",
+    "payment-response": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4RGJGZTVjNGQwMjU2RDI0NTliQjIxNmNhQjkwNTk5OUNhNDFiRTM0OSIsInRyYW5zYWN0aW9uIjoiMHgxZTJiZTM2ZTRlY2ViMjZhMTkwOGNjZDFkZWNiZjM1ZDI5YTVmNDExYWI1ZGNmMDBjMjY5ZTdmZGFkMGM1MWI0IiwibmV0d29yayI6ImVpcDE1NTo0MjIyMCJ9",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "Server": "railway-hikari",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "vary": "Accept-Encoding",
+    "x-cache": "miss",
+    "x-content-type-options": "nosniff",
+    "x-railway-request-id": "ep0eiluZQGiGE0kIWUN5dQ",
+    "x-request-id": "4dd0d28e-d379-47ca-8eac-46ac317aae1e",
+    "Content-Length": "86",
+    "x-hikari-trace": "sin1.tr00,hnd1.4cm0",
+    "x-railway-edge": "sin1",
+    "Connection": "keep-alive"
+  },
+  "text": "{\"from\":\"USD\",\"to\":\"BRL\",\"amount\":1,\"rate\":5.3271,\"result\":5.3271,\"date\":\"2026-10-28\"}"
+}
