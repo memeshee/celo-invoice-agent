@@ -112,7 +112,13 @@ async def handle_text(update: Update, text: str, ctx=None) -> None:
         )
         return
     from . import x402
-    priceable, detail = x402.can_price(draft.get("amount"), draft.get("currency"))
+    # What this freelancer wants to be paid in decides the settlement asset, so
+    # price the draft with that asset from the start — not after the payer has
+    # already been shown a number.
+    pref = store.pref_for(_user_id(msg.from_user))
+    settle_asset = x402.settle_asset_for(draft.get("currency"), pref.get("asset"))
+    priceable, detail = x402.can_price(draft.get("amount"), draft.get("currency"),
+                                       settle_asset)
     if not priceable:
         await msg.reply_text(
             f"Can't price that ({detail}). Settleable today: USDT, USDC, USAT, "
@@ -160,6 +166,7 @@ async def handle_text(update: Update, text: str, ctx=None) -> None:
         "message_id": getattr(msg, "message_id", None),
         "chat_id": msg.chat_id,
         "user_id": _user_id(msg.from_user),
+        "settle_asset": settle_asset,
     }
     kb = InlineKeyboardMarkup([[
         InlineKeyboardButton("✅ Mint pay link", callback_data="confirm"),
@@ -193,7 +200,8 @@ async def on_button(update: Update, _ctx) -> None:
                        # The freelancer's own wallet, so a second user can be
                        # paid without an operator editing the env.
                        payout_address=store.wallet_for(user.id),
-                       creator_chat_id=item.get("chat_id") or getattr(qmsg, "chat_id", None) or q.from_user.id)
+                       creator_chat_id=item.get("chat_id") or getattr(qmsg, "chat_id", None) or q.from_user.id,
+                       settle_asset=item.get("settle_asset"))
     try:
         req = x402.create_payment_request(inv, store.payout_for(inv))
         settle = f"{req['amount_display']} {req['symbol']}"
@@ -351,18 +359,27 @@ async def wallet(update: Update, ctx) -> None:
     """
     msg = must_msg(update)
     if not ctx.args:
-        current = store.wallet_for(_user_id(msg.from_user))
+        current = store.pref_for(_user_id(msg.from_user))
         await msg.reply_text(
-            f"Usage: /wallet 0xYourCeloAddress\nCurrent: {current or 'not set (falls back to the operator wallet)'}"
+            "Usage: /wallet 0xYourCeloAddress [USAT|wBRL|wARS|wMXN|wCOP|wPEN|wCLP]\n"
+            f"Current: {current.get('address') or 'not set (falls back to the operator wallet)'}"
+            + (f" · {current['asset']}" if current.get("asset") else "")
+            + "\nPick wBRL to be paid straight in reais — no dollar in the middle."
         )
         return
     address = ctx.args[0].strip()
+    asset = ctx.args[1].strip() if len(ctx.args) > 1 else None
+    if asset:
+        # Accept "wbrl"/"WBRL" the way a person types it, store canonical casing.
+        from . import x402
+        asset = next((s for s in x402.ASSETS if s.lower() == asset.lower()), asset)
     try:
-        store.set_wallet(_user_id(msg.from_user), address)
+        store.set_wallet(_user_id(msg.from_user), address, asset)
     except ValueError as e:
-        await msg.reply_text(f"{e}. Send a 0x-prefixed 20-byte address.")
+        await msg.reply_text(f"{e}.")
         return
-    await msg.reply_text(f"Payout wallet set to {address}\nNew invoices pay you directly on Celo.")
+    suffix = f"\nSettlement asset: {asset} (local currency, no FX)" if asset else ""
+    await msg.reply_text(f"Payout wallet set to {address}{suffix}\nNew invoices pay you directly on Celo.")
 
 
 def operator_ids() -> set[str]:

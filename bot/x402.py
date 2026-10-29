@@ -146,17 +146,37 @@ def resolve_symbol(currency: object) -> str:
     return asset["symbol"]
 
 
+def settle_asset_for(currency: object, pref: object) -> str | None:
+    """Pick an in-kind settlement asset for this invoice, or None for USA₮.
+
+    A BRL invoice from a freelancer who registered wBRL settles in wBRL: 1:1 with
+    the currency the payer and the freelancer both think in, no FX, no dollar in
+    the middle. Any other combination falls back to USA₮ (which for non-USD
+    amounts goes through FX).
+    """
+    cur = str(currency or "USD").upper()
+    asset = str(pref or "").strip()
+    if not asset:
+        return None
+    if asset.upper() == "USAT":
+        return None
+    if asset.upper() == "W" + cur:  # wBRL for BRL, wARS for ARS, ...
+        return asset       # keep the stored casing: ASSETS keys are mixed-case
+    return None
+
+
 def create_payment_request(invoice: dict, pay_to: str,
                            fx_provider=None) -> dict:
     """Human-payer leg: what the payer must send, in settlement units.
 
     A fiat amount is NOT the settlement amount: 500 BRL is ~93 USA₮, not 500.
     Non-USD fiat is priced through bot/fx.py and the rate travels with the
-    request so the page and the receipt can cite it. Stablecoins and wFIAT are
-    1:1 in their own unit and never converted.
+    request so the page and the receipt can cite it. An invoice with an in-kind
+    `settle_asset` (wBRL for a BRL invoice) skips FX entirely: 500 BRL settles as
+    500 wBRL, because the token IS the currency.
     """
     currency = invoice.get("currency")
-    symbol = resolve_symbol(currency)
+    symbol = invoice.get("settle_asset") or resolve_symbol(currency)
     invoice_amount = canonical_amount(invoice["amount"])
     req = {
         "invoice_id": invoice["id"],
@@ -165,6 +185,7 @@ def create_payment_request(invoice: dict, pay_to: str,
         "asset_contract": ASSETS[symbol]["asset"],
         "chain": f"eip155:{CELO_CHAIN_ID}",
         "invoice_amount_display": f"{invoice_amount} {str(currency or 'USD').upper()}",
+        "in_kind": bool(invoice.get("settle_asset")),
     }
     if symbol == "USAT" and str(currency or "USD").upper() not in ("USD", "USAT"):
         q = fx.to_usat(invoice_amount, currency, provider=fx_provider)
@@ -176,7 +197,8 @@ def create_payment_request(invoice: dict, pay_to: str,
     return req
 
 
-def can_price(amount: object, currency: object) -> tuple[bool, str]:
+def can_price(amount: object, currency: object,
+              settle_asset: str | None = None) -> tuple[bool, str]:
     """Whether an amount/currency pair is priceable, without needing a wallet.
 
     Called before a draft can be minted, so an unpriceable invoice is refused
@@ -185,7 +207,7 @@ def can_price(amount: object, currency: object) -> tuple[bool, str]:
     that arrives after the payer has already seen a number.
     """
     try:
-        symbol = resolve_symbol(currency)
+        symbol = settle_asset or resolve_symbol(currency)
         canonical = canonical_amount(amount)
         if symbol == "USAT" and str(currency or "USD").upper() not in ("USD", "USAT"):
             q = fx.to_usat(canonical, currency)

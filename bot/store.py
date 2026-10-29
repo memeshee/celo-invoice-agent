@@ -45,14 +45,32 @@ def _save(db: dict) -> None:
 
 # ------------------------------------------------------------------- payouts
 
-def set_wallet(user_id: int | str, address: str) -> str:
-    """Register the wallet a user gets paid at."""
+def set_wallet(user_id: int | str, address: str, asset: str | None = None) -> str:
+    """Register the wallet a user gets paid at, and optionally the asset.
+
+    `asset` is how a Brazilian freelancer says "pay me in reais": the invoice is
+    then settled in wBRL (Ripio's local stablecoin) instead of converting to
+    USA₮, so the money never leaves the currency they actually spend.
+    """
     if not ADDRESS_RE.match(address or ""):
         raise ValueError(f"not an address: {address!r}")
+    if asset is not None:
+        from . import x402
+        allowed = ("USAT",) + tuple(s for s in x402.ASSETS if s.startswith("w"))
+        if asset not in allowed:
+            raise ValueError(f"unsupported settlement asset {asset!r} (choose from {', '.join(allowed)})")
     db = _load()
-    db["wallets"][str(user_id)] = {"address": address, "set": int(time.time())}
+    entry = {"address": address, "set": int(time.time())}
+    if asset:
+        entry["asset"] = asset
+    db["wallets"][str(user_id)] = entry
     _save(db)
     return address
+
+
+def pref_for(user_id: int | str) -> dict:
+    """The registered payout preference, e.g. {'address': .., 'asset': 'wBRL'}."""
+    return dict(_load()["wallets"].get(str(user_id)) or {})
 
 
 def wallet_for(user_id: int | str) -> str | None:
@@ -74,7 +92,8 @@ def create(draft: dict, screen: dict, creator: str,
            created_block: int | None = None,
            payout_address: str | None = None,
            creator_chat_id: int | None = None,
-           status: str = "open") -> dict:
+           status: str = "open",
+           settle_asset: str | None = None) -> dict:
     db = _load()
     db["seq"] += 1
     db.setdefault("used_tx", {})
@@ -92,6 +111,9 @@ def create(draft: dict, screen: dict, creator: str,
         "recipient": draft.get("recipient"),
         "raw": draft.get("raw"),
         "payout_address": payout_address,
+        # What this invoice will actually be paid in. Recorded at mint so the
+        # page, the watcher and the receipt cannot disagree about it later.
+        "settle_asset": settle_asset,
         "trust": {
             "decision": screen.get("decision"),
             "suspicious_p": screen.get("suspicious_p"),

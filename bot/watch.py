@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -28,22 +29,70 @@ from . import services, store, x402
 
 load_dotenv()
 
-BLOCKSCOUT = "https://celo.blockscout.com/api"
+BLOCKSCOUT_V1 = "https://celo.blockscout.com/api"
+BLOCKSCOUT_V2 = "https://celo.blockscout.com/api/v2"
 POLL_INTERVAL_S = int(os.environ.get("WATCH_INTERVAL_S", "45"))
 UA = "celo-invoice-agent/1.0"
 
 
-def transfers_to(address: str, *, fetcher=None) -> list[dict]:
-    """Every ERC-20 transfer into `address`, newest first, normalized."""
-    if fetcher is not None:
-        return fetcher(address)
-    query = urllib.parse.urlencode({
-        "module": "account", "action": "tokentx", "address": address,
-        "offset": "100", "sort": "desc",
-    })
-    req = urllib.request.Request(f"{BLOCKSCOUT}?{query}", headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=25) as r:
-        body = json.load(r)
+def _open(url: str, timeout: int = 25):
+    """HTTP GET seam. Exists so the retry path is testable without the network."""
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """429/5xx and transport errors are worth another go. A 404 is not.
+
+    HTTPError subclasses URLError, so testing URLError first would retry every
+    HTTP status — including the 404 that means "this endpoint is gone, try the
+    other one now".
+    """
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in (429, 500, 502, 503, 504)
+    return isinstance(exc, (urllib.error.URLError, TimeoutError))
+
+
+def _get_json(url: str, *, attempts: int = 3, backoff_s: float = 2.0, log=print):
+    last: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            with _open(url) as r:
+                return json.load(r)
+        except Exception as e:  # noqa: BLE001
+            last = e
+            if not _is_retryable(e) or attempt == attempts:
+                raise
+            log(f"[watch] fetch {attempt}/{attempts} failed ({type(e).__name__}); "
+                f"retrying in {backoff_s * attempt:.0f}s")
+            time.sleep(backoff_s * attempt)
+    raise last or RuntimeError("unreachable")
+
+
+def _parse_v2(body: dict) -> list[dict]:
+    """Blockscout v2 token-transfers shape."""
+    if "items" not in body:
+        raise ValueError("not a v2 token-transfers payload")
+    out = []
+    for it in body.get("items") or []:
+        total = it.get("total") or {}
+        value = total.get("value") if isinstance(total, dict) else None
+        if value is None:
+            continue
+        out.append({
+            "tx": str(it.get("transaction_hash") or "").lower(),
+            "to": str((it.get("to") or {}).get("hash") or "").lower(),
+            "contract": str((it.get("token") or {}).get("address_hash") or "").lower(),
+            "value": int(value),
+            "block": int(it.get("block_number") or 0),
+        })
+    return [t for t in out if t["tx"] and t["to"] and t["contract"]]
+
+
+def _parse_v1(body: dict) -> list[dict]:
+    """Blockscout v1 (etherscan-compatible) tokentx shape."""
+    if "result" not in body and str(body.get("status")) != "1":
+        raise ValueError("not a v1 tokentx payload")
     if str(body.get("status")) != "1":
         return []
     out = []
@@ -59,6 +108,42 @@ def transfers_to(address: str, *, fetcher=None) -> list[dict]:
         except (KeyError, TypeError, ValueError):
             continue
     return out
+
+
+def _transfers_v2(address: str, **kw) -> list[dict]:
+    return _parse_v2(_get_json(
+        f"{BLOCKSCOUT_V2}/addresses/{address}/token-transfers?type=ERC-20", **kw))
+
+
+def _transfers_v1(address: str, **kw) -> list[dict]:
+    query = urllib.parse.urlencode({
+        "module": "account", "action": "tokentx", "address": address,
+        "offset": "100", "sort": "desc",
+    })
+    return _parse_v1(_get_json(f"{BLOCKSCOUT_V1}?{query}", **kw))
+
+
+def transfers_to(address: str, *, fetcher=None, attempts: int = 3,
+                 backoff_s: float = 2.0, log=print) -> list[dict]:
+    """Every ERC-20 transfer into `address`, newest first, normalized.
+
+    Two sources on purpose. Blockscout's v1 endpoint rate-limits this machine
+    into a hard 429 while v2 keeps answering (they are metered separately), and a
+    failed fetch must never be read as "nobody paid" — that is exactly how a
+    settled invoice stays open forever. So: retry with backoff, then fail over,
+    then raise so the caller can say "could not ask" instead of "nothing there".
+    """
+    if fetcher is not None:
+        return fetcher(address)
+    errors = []
+    for name, fetch in (("v2", _transfers_v2), ("v1", _transfers_v1)):
+        try:
+            return fetch(address, attempts=attempts, backoff_s=backoff_s, log=log)
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{name}: {type(e).__name__}")
+            log(f"[watch] {name} source failed for {address[:10]}… "
+                f"({type(e).__name__}: {e})")
+    raise RuntimeError("all transfer sources failed — " + ", ".join(errors))
 
 
 def find_settlement(invoice: dict, transfers: list[dict]) -> dict | None:

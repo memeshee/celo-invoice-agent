@@ -28,7 +28,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from dotenv import load_dotenv
 
-from . import services, store, x402
+from . import ramp, services, store, x402
 
 load_dotenv()  # the units run from the repo dir; .env is the single config source
 
@@ -124,6 +124,11 @@ def invoice_payload(inv: dict) -> dict:
         # BOUGHT; show the comparison rather than asking anyone to trust us.
         out["fx_check"] = services.fx_crosscheck(
             {"receipts": inv.get("services") or []}, req["fx"]["usd_per_unit"])
+    out["in_kind"] = req.get("in_kind")
+    out["settlement_note"] = ramp.settlement_note(req["symbol"])
+    # If the payer does not already hold wBRL, the ramp link is the difference
+    # between "payable" and "payable if you happen to have Brazilian stablecoin".
+    out["onramp_url"] = ramp.onramp_url(req["symbol"], req["amount_display"], pay_to)
     return out
 
 
@@ -193,6 +198,8 @@ def render_invoice(payload: dict) -> str:
     if payload.get("pay_to"):
         rows.append(("Paid to", f'<span class="mono">{_e(_short(payload["pay_to"]))}</span>'))
     rows.append(("Settles on", "Celo mainnet · eip155:42220"))
+    if payload.get("settlement_note"):
+        rows.append(("Settlement", _e(payload["settlement_note"])))
     if payload.get("settlement_tx"):
         rows.append(("Settlement tx",
                      f'<a href="{_e(payload["explorer"])}" target="_blank" rel="noreferrer" '
@@ -234,7 +241,10 @@ def render_invoice(payload: dict) -> str:
             f'<a class="btn" href="{_e(payload["pay_link_celo"])}">Pay '
             f'{_e(payload.get("settle_amount") or "")}</a>'
             f'<a class="btn ghost" href="{_e(payload["pay_link_eip681"])}">Open in another wallet (EIP-681)</a>'
-            f'<div class="note">Or send <b>{_e(payload.get("settle_amount") or "")}</b> to '
+            + (f'<a class="btn ghost" href="{_e(payload["onramp_url"])}" target="_blank" '
+               f'rel="noreferrer">Don\'t hold it yet? Buy with a card (Ripio)</a>'
+               if payload.get("onramp_url") else "")
+            + f'<div class="note">Or send <b>{_e(payload.get("settle_amount") or "")}</b> to '
             f'<span class="mono">{_e(payload.get("pay_to") or "")}</span> on Celo. '
             f'This page confirms by itself — no need to tell anyone you paid.</div>'
         )

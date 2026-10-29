@@ -163,9 +163,11 @@ def plan_for(invoice: dict) -> list[tuple[str, dict]]:
     """Which services this invoice needs bought, in order."""
     out = []
     currency = str(invoice.get("currency") or "USD").upper()
-    if currency not in ("USD", "USAT", "USDC", "USDT"):
-        out.append(("fx-rate", {"from": "USD", "to": currency,
-                               "amount": 1}))
+    # An in-kind invoice (500 BRL settling as 500 wBRL) involves no conversion,
+    # so buying an FX cross-check for it would be paying for a number nobody uses.
+    in_kind = bool(invoice.get("settle_asset"))
+    if currency not in ("USD", "USAT", "USDC", "USDT") and not in_kind:
+        out.append(("fx-rate", {"from": "USD", "to": currency, "amount": 1}))
     payout = invoice.get("payout_address")
     if payout:
         out.append(("sanctions-wallet", {"address": payout}))

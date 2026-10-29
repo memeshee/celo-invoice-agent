@@ -74,6 +74,14 @@ def test_plan_skips_fx_for_usd_and_name_for_handles():
     assert slugs == ["sanctions-wallet"]
 
 
+def test_plan_skips_fx_for_an_in_kind_invoice():
+    """500 BRL settling as 500 wBRL involves no conversion to cross-check."""
+    slugs = [s for s, _ in services.plan_for(
+        {"id": "INV-4", "currency": "BRL", "recipient": "Ana Souza",
+         "payout_address": PAY_TO, "settle_asset": "wBRL"})]
+    assert "fx-rate" not in slugs and slugs == ["sanctions-wallet", "sanctions-name"]
+
+
 def test_plan_skips_wallet_screen_when_no_payout(monkeypatch):
     monkeypatch.delenv("INVOICE_WALLET", raising=False)
     slugs = [s for s, _ in services.plan_for(
