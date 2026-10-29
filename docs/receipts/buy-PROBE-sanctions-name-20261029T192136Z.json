@@ -1,0 +1,25 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-origin": "*",
+    "access-control-expose-headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, WWW-Authenticate, Payment-Receipt, X-Cache, X-Credits-Balance, X-Metered-Usd, X-Idempotent-Replay, X-Replayed-Answer, Retry-After, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-Id, Link, X-Total-Count, X-Async-Recommended, Location, Preference-Applied, Sunset",
+    "Cache-Control": "no-store, private",
+    "Content-Type": "application/json; charset=utf-8",
+    "Date": "Thu, 29 Oct 2026 19:21:36 GMT",
+    "etag": "W/\"28f-bXBn+C8w6lC6dfAhr/waBbjapIQ\"",
+    "payment-response": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4RGJGZTVjNGQwMjU2RDI0NTliQjIxNmNhQjkwNTk5OUNhNDFiRTM0OSIsInRyYW5zYWN0aW9uIjoiMHg4NWJlYWIzNDE1Y2Q4ZDQzMzU3MjljZjdiMjQ2N2Q0OTc3MjFkNGFjMzEyNGZkMDA0YzVhNGZkZDgxOWUxNjE0IiwibmV0d29yayI6ImVpcDE1NTo0MjIyMCJ9",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "Server": "railway-hikari",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "vary": "Accept-Encoding",
+    "x-content-type-options": "nosniff",
+    "x-railway-request-id": "ZokBUC4TT1S2bpkiYqVb7A",
+    "x-request-id": "b47743c1-5c2b-40e9-9287-37a69c8eaa83",
+    "Content-Encoding": "gzip",
+    "x-hikari-trace": "sin1.d1nj",
+    "x-railway-edge": "sin1",
+    "Transfer-Encoding": "chunked",
+    "Connection": "keep-alive"
+  },
+  "text": "{\"query\":\"Lucia Ferreira\",\"verdict\":\"no_match_on_lists_checked\",\"exactCount\":0,\"containsCount\":0,\"allTokensCount\":0,\"matches\":[],\"entriesOnList\":19484,\"listsChecked\":[{\"list\":\"OFAC SDN\",\"authority\":\"US Treasury OFAC\",\"url\":\"https://sanctionslist.ofac.treas.gov/\"}],\"listsFetchedAt\":\"2026-10-29T18:32:22.305Z\",\"notAClearance\":\"this value does not appear on the lists named in `listsChecked`, as of the dates in `listsFetchedAt`. That is NOT a clearance: lists change without notice, entities appear under many spellings, and ownership rules put parties in scope who are named on no list. Use this as one input to your own screening, never as the decision\"}"
+}
