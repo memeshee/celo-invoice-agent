@@ -1,0 +1,47 @@
+{
+ "date": "2026-10-29",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Celo fee abstraction USDC gas payments for invoicing agents",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 510699,
+ "usdc_after_atomic": 500699,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.510699,
+ "usdc_after": 0.500699,
+ "usdc_spent": 0.01,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Celo fee abstraction USDC gas payments for invoicing agents",
+  "count": 2,
+  "results": [
+   {
+    "title": "Fee Abstraction - Celo Docs",
+    "url": "https://docs.celo.org/build-on-celo/fee-abstraction/overview",
+    "description": "Fee abstraction is one of Celo\u2019s core protocol features. It allows users to pay gas fees in ERC20 tokens \u2014 like USDC, USDT, or Mento stablecoins \u2014 instead of needing to hold the native CELO token.",
+    "age": "July 20, 2026",
+    "publishedAt": "2026-07-20T21:27:05.000Z"
+   },
+   {
+    "title": "Fee Abstraction - Celo Specification",
+    "url": "https://specs.celo.org/fee_abstraction.html",
+    "description": "Instead, a FeeCurrencyAdapter contracts ... total gas costs for a transaction is determined. This only really impacts the user in a single way: Instead of using the USDC and USDT token addresses, you have to pass their FeeCurrencyAdapter addresses in the feeCurrency field for CIP-64 txs. To become registered as a Fee Abstraction currency, ...",
+    "age": null,
+    "publishedAt": null
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0xf17a47502c5d87243f7a372ab29e27e8b41d25b170b7f7b3f66eb279afcf7025",
+ "settlement_block": 81380184,
+ "settlement_status": "0x1",
+ "attempts": 1,
+ "elapsed_s": 10.9
+}
