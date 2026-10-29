@@ -14,8 +14,8 @@ Built for the Celo *Agents on Open Rails* hackathon. Celo mainnet only.
 
 Nobody has to sign up, install anything, or talk to me. Press pay:
 
-- **[0.05 USDC](https://celo-invoice-agent.vercel.app/i/INV-0007-2782D9)** — the token a Celo wallet is most likely to hold
-- **[25 wBRL](https://celo-invoice-agent.vercel.app/i/INV-0008-9E74F4)** — the LatAm path, with a prefilled Ripio on-ramp if you hold no stablecoin at all
+- **[0.05 USDC](https://celo.uconfidant.tech/i/INV-0007-2782D9)** — the token a Celo wallet is most likely to hold
+- **[25 wBRL](https://celo.uconfidant.tech/i/INV-0008-9E74F4)** — the LatAm path, with a prefilled Ripio on-ramp if you hold no stablecoin at all
 
 Both pages flip to settled by themselves once the transfer lands — verified from the
 chain, no confirm button, nobody to tell.
@@ -23,8 +23,8 @@ chain, no confirm button, nobody to tell.
 | | |
 |---|---|
 | **Bot** | [@notcelordbot](https://t.me/notcelordbot) — `/wallet`, one sentence, done |
-| **Onchain proof** | [celo-invoice-agent.vercel.app/proof](https://celo-invoice-agent.vercel.app/proof) — re-derives every claim from Celo (cached 60s) |
-| **Agent card** | ERC-8004 `agentId 10005` on Celo · [`/agent.json`](https://celo-invoice-agent.vercel.app/agent.json) · [8004scan](https://8004scan.io/agents/celo/10005) |
+| **Onchain proof** | [celo-invoice-agent.vercel.app/proof](https://celo.uconfidant.tech/proof) — re-derives every claim from Celo (cached 60s) |
+| **Agent card** | ERC-8004 `agentId 10005` on Celo · [`/agent.json`](https://celo.uconfidant.tech/agent.json) · [8004scan](https://8004scan.io/agents/celo/10005) |
 | **Judging map** | [docs/judging.md](docs/judging.md) — each criterion → the code that satisfies it |
 
 <img src="docs/invoice-page.png" alt="A live invoice page offering 0.05 USDC, with two paid sanctions checks and their receipt links" width="340">

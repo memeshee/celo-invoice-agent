@@ -14,15 +14,15 @@ open, and marks the invoice paid **from Celo rather than from a claim**.
 
 ## What a judge should click, in order
 
-1. **Pay an invoice** — [0.05 USDC](https://celo-invoice-agent.vercel.app/i/INV-0007-2782D9)
-   or [25 wBRL with a Ripio on-ramp](https://celo-invoice-agent.vercel.app/i/INV-0008-9E74F4).
+1. **Pay an invoice** — [0.05 USDC](https://celo.uconfidant.tech/i/INV-0007-2782D9)
+   or [25 wBRL with a Ripio on-ramp](https://celo.uconfidant.tech/i/INV-0008-9E74F4).
    Both are already screened; the page flips to settled by itself when the transfer
    lands.
-2. **[`/proof`](https://celo-invoice-agent.vercel.app/proof)** — every settlement claim
+2. **[`/proof`](https://celo.uconfidant.tech/proof)** — every settlement claim
    re-derived from Celo on render, and each payment labelled `independent payer` /
    `builder-funded` / `unverified`. It currently reads **0 independent payers**, and
    says so.
-3. **[`/agent.json`](https://celo-invoice-agent.vercel.app/agent.json)** — the
+3. **[`/agent.json`](https://celo.uconfidant.tech/agent.json)** — the
    machine-readable card, matching ERC-8004 `agentId 10005` on chain.
 4. **[docs/judging.md](judging.md)** — each criterion mapped to the function that
    satisfies it.
