@@ -8,6 +8,13 @@ page anyone can open, watches Celo for the money, and marks the invoice paid
 
 Built for the Celo *Agents on Open Rails* hackathon. Celo mainnet only.
 
+![A live invoice page on Celo mainnet](docs/invoice-page.png)
+
+**A live one is open right now** — [open the invoice](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/i/INV-0006-D2064A)
+and press *Pay 0.05 USA₮*. The agent already screened it (two paid sanctions
+checks, receipts linked), and the page flips to settled by itself once the
+transfer lands — nobody has to be told.
+
 - **Live pages:** https://newsletter-effect-backgrounds-attribute.trycloudflare.com
   — [`/proof`](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/proof)
   re-verifies every onchain claim on each render
@@ -62,6 +69,13 @@ them as users.
 
 Paid-call receipts (raw 402 responses, headers and all) are committed under
 [`docs/receipts/`](docs/receipts).
+
+![The /proof page](docs/proof-page.png)
+
+`/proof` is not a dashboard: it re-runs `bot/verify.payment_proof` on every render,
+so the numbers are re-derived from Celo each time the page loads — and it labels
+payments from the builder's own wallets *builder-funded*, because those prove the
+rails work, not that a user showed up.
 
 ## Deployed contracts and addresses
 
@@ -123,14 +137,19 @@ python scripts/verify_settlements.py --fix   # withdraw the ones that do not hol
 ## Tests
 
 ```bash
-python -m pytest            # 142 tests, offline: no network, no keys, no .env
+python -m pytest            # 195 tests, offline: no network, no keys, no .env
 python -m pytest -m network # live facilitator, Textile, agent402, Typesafe Jev
 python -m pytest -m live    # reads real Celo mainnet history
+ruff check .                # lint (E, F, W, I, B)
 ```
 
 The default run deliberately passes on a clean checkout with nothing configured:
 network- and key-dependent tests are marked and excluded by `pytest.ini`. CI runs
-exactly that command.
+exactly that command, plus ruff, byte-compilation and a 75% coverage floor
+(currently 78%). The densest tests are on the parts where a silent failure costs
+money: `bot/verify.py` (85%, every refusal path), the x402 spend budgets
+(`tests/test_spend_controls.py`) and the public HTTP surface
+(`tests/test_serve_http.py`, over a real socket).
 
 ## Tracks this targets
 

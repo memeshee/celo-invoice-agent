@@ -184,6 +184,14 @@ def render_proof(data: dict) -> str:
 </main></body></html>"""
 
 
+# Service slugs are wire names; a payer reads the page, so give them labels.
+CHECK_LABELS = {
+    "sanctions-wallet": "Sanctions · wallet",
+    "sanctions-name": "Sanctions · name",
+    "fx-rate": "FX rate",
+}
+
+
 def _screening(inv: dict) -> dict:
     """What the agent bought for this invoice, compacted for display."""
     receipts = inv.get("services") or []
@@ -280,8 +288,10 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b121
 .settle{color:#94a3b8;margin:6px 0 0;font-size:15px}
 .rows{margin:22px 0 0;border-top:1px solid #1f2d28}
 .row{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid #1f2d28;font-size:14px}
-.row dt{color:#94a3b8;margin:0}
-.row dd{margin:0;text-align:right;word-break:break-all;font-variant-numeric:tabular-nums}
+.row dt{color:#94a3b8;margin:0;overflow-wrap:normal;word-break:keep-all}
+.row dd{margin:0;text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.row dd a{white-space:nowrap;overflow-wrap:normal}
+.tag{display:inline-block;margin-top:4px;font-size:11px;color:#94a3b8}
 .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
 .open{background:#1e3a5f;color:#93c5fd}
 .settled{background:#14351f;color:#6ee7b7}
@@ -292,6 +302,12 @@ a.ghost{background:transparent;color:#5eead4;border:1px solid #24463c;font-weigh
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
 .foot{margin-top:22px;padding-top:16px;border-top:1px solid #1f2d28;font-size:12px;color:#64748b}
 .foot a{color:#94a3b8}
+/* On a phone the label column gets too narrow and every row wraps mid-phrase.
+   Stack them instead: label on its own line, value beneath. */
+@media (max-width: 560px){
+  .row{flex-direction:column;gap:3px}
+  .row dd{text-align:left}
+}
 .note{margin-top:14px;font-size:12px;color:#64748b}
 .warn{background:#3b1d1d;border-color:#5b2a2a;color:#fca5a5;padding:14px;border-radius:10px;font-size:14px}
 """
@@ -345,9 +361,10 @@ def render_invoice(payload: dict) -> str:
             detail = check.get("verdict") or ("clean" if check.get("clean") else "failed")
         else:
             detail = "quoted" if check.get("ok") else "failed"
-        link = (f'<a href="{_e(check["explorer"])}" target="_blank" rel="noreferrer">'
-                f'receipt</a>') if check.get("explorer") else ""
-        rows.append((_e(check["slug"]), f"{_e(detail)}{(' · ' + link) if link else ''}"))
+        link = (f'<span style="white-space:nowrap">· <a href="{_e(check["explorer"])}" '
+                f'target="_blank" rel="noreferrer">receipt</a></span>') if check.get("explorer") else ""
+        rows.append((_e(CHECK_LABELS.get(check["slug"], check["slug"])),
+                     f"{_e(detail)}{(' ' + link) if link else ''}"))
 
     if payload.get("error"):
         body = f'<div class="warn">{_e(payload["error"])}</div>'
@@ -369,7 +386,8 @@ def render_invoice(payload: dict) -> str:
         body = (
             f'<a class="btn" href="{_e(payload["pay_link_celo"])}">Pay '
             f'{_e(payload.get("settle_amount") or "")}</a>'
-            f'<a class="btn ghost" href="{_e(payload["pay_link_eip681"])}">Open in another wallet (EIP-681)</a>'
+            f'<a class="btn ghost" href="{_e(payload["pay_link_eip681"])}">Open in another wallet '
+            f'(EIP&#8209;681)</a>'
             + (f'<a class="btn ghost" href="{_e(payload["onramp_url"])}" target="_blank" '
                f'rel="noreferrer">Don\'t hold it yet? Buy with a card (Ripio)</a>'
                if payload.get("onramp_url") else "")
