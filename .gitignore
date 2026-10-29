@@ -11,3 +11,6 @@ tunnel.log
 coverage.xml
 htmlcov/
 .pytest_cache/
+site/.vercel/
+site/.env.local
+.site_url

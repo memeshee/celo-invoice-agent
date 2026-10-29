@@ -41,18 +41,22 @@ while true; do
     continue
   fi
 
-  CURRENT=$(sed -n 's/^PUBLIC_BASE_URL=//p' "$ENVFILE" | tr -d '\r')
+  CURRENT=$(sed -n 's/^ORIGIN_BASE_URL=//p' "$ENVFILE" | tr -d '\r')
   if [ "$URL" != "$CURRENT" ]; then
-    sed -i "s|^PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL=$URL|" "$ENVFILE"
-    log "public URL -> $URL (synced into .env)"
+    # The tunnel is only the origin now: the URL judges hold is the stable Vercel
+    # host, so a rotation republishes the proxy instead of invalidating links.
+    sed -i "s|^ORIGIN_BASE_URL=.*|ORIGIN_BASE_URL=$URL|" "$ENVFILE"
+    log "origin -> $URL (synced into .env)"
     systemctl --user restart celo-invoice-serve.service celo-invoice-bot.service || true
     sleep 5
-    # The ERC-8004 card must not advertise an endpoint that stopped answering.
+    bash "$REPO/scripts/publish_site.sh" >> "$REPO/tunnel.log" 2>&1 \
+      && log "site republished, proxy follows the new origin" \
+      || log "site republish failed (see log)"
     "$PY" "$REPO/scripts/set_agent_services.py" >> "$REPO/tunnel.log" 2>&1 \
-      && log "agent card updated to $URL" \
+      && log "agent card confirmed at the stable endpoint" \
       || log "agent card update skipped/failed (see log)"
   else
-    log "tunnel up at $URL (unchanged)"
+    log "tunnel up at $URL (origin unchanged)"
   fi
 
   wait "$CF_PID"

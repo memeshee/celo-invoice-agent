@@ -7,14 +7,14 @@ reads `tokenURI(10005)` from `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` on Cel
 .venv/bin/python scripts/gen_erc8004_doc.py
 ```
 
-`agentURI` length onchain: **1705 chars** (`data:application/json;base64,…`).
+`agentURI` length onchain: **1665 chars** (`data:application/json;base64,…`).
 
 | field | value |
 |---|---|
 | name | Celo Invoice Agent |
 | active | true |
 | x402Support | false |
-| services[0] | `web` → https://newsletter-effect-backgrounds-attribute.trycloudflare.com |
+| services[0] | `web` → https://celo-invoice-agent.vercel.app |
 | registrations[0] | agentId 10005 · `eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
 
 ## description
@@ -37,7 +37,7 @@ reads `tokenURI(10005)` from `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` on Cel
   ],
   "services": [
     {
-      "endpoint": "https://newsletter-effect-backgrounds-attribute.trycloudflare.com",
+      "endpoint": "https://celo-invoice-agent.vercel.app",
       "name": "web"
     }
   ],

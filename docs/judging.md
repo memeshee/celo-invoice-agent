@@ -13,7 +13,7 @@ reading the source first.
   link bound to the invoice's payout address (`bot/ramp.py`), so a payer with no
   stablecoin buys local-currency wFIAT with a card and it lands on the invoice.
 - **Autonomous?** `bot/watch.py` settles without anyone typing a command.
-- **Try it:** https://newsletter-effect-backgrounds-attribute.trycloudflare.com/i/INV-0006-D2064A
+- **Try it:** https://celo-invoice-agent.vercel.app/i/INV-0006-D2064A
 
 ## Build with `buy`
 

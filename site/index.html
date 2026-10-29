@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Celo Invoice Agent — get paid in your own currency</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b1210;
+     color:#e6edf3;font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}
+.card{width:100%;max-width:520px;background:#111a17;border:1px solid #1f2d28;border-radius:16px;padding:28px}
+.kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#5eead4;margin:0 0 10px}
+.amount{font-size:40px;font-weight:650;letter-spacing:-.02em;margin:0}
+.settle{color:#94a3b8;margin:6px 0 0;font-size:15px}
+.rows{margin:22px 0 0;border-top:1px solid #1f2d28}
+.row{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid #1f2d28;font-size:14px}
+.row dt{color:#94a3b8;margin:0;overflow-wrap:normal;word-break:keep-all}
+.row dd{margin:0;text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.row dd a{white-space:nowrap;overflow-wrap:normal}
+.tag{display:inline-block;margin-top:4px;font-size:11px;color:#94a3b8}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.open{background:#1e3a5f;color:#93c5fd}
+.settled{background:#14351f;color:#6ee7b7}
+.held{background:#3b2f14;color:#fcd34d}
+a.btn{display:block;text-align:center;text-decoration:none;margin-top:16px;padding:14px 18px;
+      border-radius:12px;font-weight:650;background:#5eead4;color:#06231c}
+a.ghost{background:transparent;color:#5eead4;border:1px solid #24463c;font-weight:550}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.foot{margin-top:22px;padding-top:16px;border-top:1px solid #1f2d28;font-size:12px;color:#64748b}
+.foot a{color:#94a3b8}
+/* On a phone the label column gets too narrow and every row wraps mid-phrase.
+   Stack them instead: label on its own line, value beneath. */
+@media (max-width: 560px){
+  .row{flex-direction:column;gap:3px}
+  .row dd{text-align:left}
+}
+.note{margin-top:14px;font-size:12px;color:#64748b}
+.warn{background:#3b1d1d;border-color:#5b2a2a;color:#fca5a5;padding:14px;border-radius:10px;font-size:14px}
+
+  .steps{margin:18px 0 0;padding:0;list-style:none;counter-reset:s}
+  .steps li{position:relative;padding:10px 0 10px 34px;font-size:14px;color:#cbd5e1;
+             border-bottom:1px solid #1f2d28;counter-increment:s}
+  .steps li:before{content:counter(s);position:absolute;left:0;top:9px;width:22px;height:22px;
+    border-radius:50%;background:#14351f;color:#6ee7b7;font-size:12px;font-weight:700;
+    display:grid;place-items:center}
+  .live{font-size:12px;color:#6ee7b7;margin-top:10px}
+</style></head>
+<body><main class="card">
+  <p class="kicker">Celo Invoice Agent · ERC-8004 #10005</p>
+  <h1 class="amount">Get paid in<br>your own currency</h1>
+  <p class="settle">Send one sentence to the bot. It prices the invoice, screens the
+  counterparty, mints a pay link, and settles in stablecoins on Celo — proven from
+  the chain, never from a claim.</p>
+
+  <ol class="steps">
+    <li><b>“charge Marco 500 BRL for the logo”</b> — parsed by a typed model
+        judgment that fails closed on anything it cannot read.</li>
+    <li><b>The agent buys what it cannot do itself</b> — a sanctions screen on the
+        name and the payout wallet, plus an FX cross-check, each paid in USA₮/USDC
+        over x402 (~$0.009 per invoice). A hit blocks settlement.</li>
+    <li><b>The payer opens a link</b> — wallet deep link, EIP-681, or a Ripio
+        on-ramp if they hold no stablecoin. 500 BRL settles as 500 wBRL in kind.</li>
+    <li><b>Nobody confirms anything</b> — the watcher proves the transfer onchain
+        and marks the invoice paid.</li>
+  </ol>
+
+  <dl class="rows">
+    <div class="row"><dt>Settlement</dt>
+      <dd>USA₮ · USDC · wBRL/wARS/wCOP · eip155:42220</dd></div>
+    <div class="row"><dt>Attribution</dt>
+      <dd class="mono">ERC-8021 · celo_invoiceagent</dd></div>
+    <div class="row"><dt>Onchain proof</dt><dd><a href="/proof">/proof</a></dd></div>
+    <div class="row"><dt>Agent card</dt>
+      <dd><a href="https://8004scan.io/agents/celo/10005" target="_blank"
+             rel="noreferrer">8004scan</a></dd></div>
+    <div class="row"><dt>Source</dt>
+      <dd><a href="https://github.com/memeshee/celo-invoice-agent" target="_blank" rel="noreferrer">github</a></dd></div>
+  </dl>
+  <p class="live">2/2 settlements proven onchain · 12 paid service calls · every payment so far is builder-funded: the rails work end to end, the users are still ours</p>
+  <a class="btn" href="https://t.me/notcelordbot" target="_blank" rel="noreferrer">
+    Try it on Telegram</a>
+  <div class="foot">Invoice pages live at <span class="mono">/i/&lt;invoice-id&gt;</span>.
+  Every settlement claim on <a href="/proof">/proof</a> is re-derived from Celo
+  (cached 60s), not read back out of our own database.</div>
+  <div class="foot" style="margin-top:10px">Static snapshot of this page — the invoice pages and <a href="/proof">/proof</a> are served live.</div>
+</main></body></html>
