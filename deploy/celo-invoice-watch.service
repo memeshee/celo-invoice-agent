@@ -1,0 +1,19 @@
+[Unit]
+Description=Celo Invoice Agent — onchain settlement watcher
+Documentation=https://github.com/memeshee/celo-invoice-agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=<REPO>
+Environment=PYTHONUNBUFFERED=1
+ExecStart=<REPO>/.venv/bin/python -m bot.watch
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+StandardOutput=append:<REPO>/watch.log
+StandardError=append:<REPO>/watch.log
+
+[Install]
+WantedBy=default.target

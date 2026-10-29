@@ -1,0 +1,20 @@
+[Unit]
+Description=Celo Invoice Agent — public invoice pages
+Documentation=https://github.com/memeshee/celo-invoice-agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=<REPO>
+Environment=PYTHONUNBUFFERED=1
+Environment=PUBLIC_PORT=8088
+ExecStart=<REPO>/.venv/bin/python -m bot.serve
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=0
+StandardOutput=append:<REPO>/serve.log
+StandardError=append:<REPO>/serve.log
+
+[Install]
+WantedBy=default.target
