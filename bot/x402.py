@@ -29,6 +29,8 @@ import os
 import re
 import urllib.request
 
+from . import fx
+
 FACILITATOR = os.environ.get("X402_FACILITATOR_URL", "https://api.x402.celo.org")
 CELO_CHAIN_ID = 42220
 
@@ -144,34 +146,50 @@ def resolve_symbol(currency: object) -> str:
     return asset["symbol"]
 
 
-def create_payment_request(invoice: dict, pay_to: str) -> dict:
-    """Human-payer leg: plain USA₮ transfer instructions.
+def create_payment_request(invoice: dict, pay_to: str,
+                           fx_provider=None) -> dict:
+    """Human-payer leg: what the payer must send, in settlement units.
 
-    invoice: {id, amount, currency}; currency maps to a settlement asset
-    (fiat codes settle in USAT; w* codes settle in-kind for the LatAm track).
-    Returns what /pay shows the payer. watch_transfers() closes the loop.
+    A fiat amount is NOT the settlement amount: 500 BRL is ~93 USA₮, not 500.
+    Non-USD fiat is priced through bot/fx.py and the rate travels with the
+    request so the page and the receipt can cite it. Stablecoins and wFIAT are
+    1:1 in their own unit and never converted.
     """
-    symbol = resolve_symbol(invoice.get("currency"))
-    return {
+    currency = invoice.get("currency")
+    symbol = resolve_symbol(currency)
+    invoice_amount = canonical_amount(invoice["amount"])
+    req = {
         "invoice_id": invoice["id"],
         "pay_to": pay_to,
-        "amount_display": canonical_amount(invoice["amount"]),
         "symbol": symbol,
-        "amount_atomic": atomic(str(invoice["amount"]), symbol),
         "asset_contract": ASSETS[symbol]["asset"],
         "chain": f"eip155:{CELO_CHAIN_ID}",
+        "invoice_amount_display": f"{invoice_amount} {str(currency or 'USD').upper()}",
     }
+    if symbol == "USAT" and str(currency or "USD").upper() not in ("USD", "USAT"):
+        q = fx.to_usat(invoice_amount, currency, provider=fx_provider)
+        req.update({"amount_display": q["display"], "amount_atomic": q["atomic"],
+                    "fx": q["rate"]})
+    else:
+        req.update({"amount_display": invoice_amount,
+                    "amount_atomic": atomic(invoice_amount, symbol)})
+    return req
 
 
 def can_price(amount: object, currency: object) -> tuple[bool, str]:
     """Whether an amount/currency pair is priceable, without needing a wallet.
 
     Called before a draft can be minted, so an unpriceable invoice is refused
-    with a message instead of raising inside /check later.
+    with a message instead of raising inside /check later. A currency with no
+    FX rate fails here, which is the point: minting must not depend on a rate
+    that arrives after the payer has already seen a number.
     """
     try:
         symbol = resolve_symbol(currency)
         canonical = canonical_amount(amount)
+        if symbol == "USAT" and str(currency or "USD").upper() not in ("USD", "USAT"):
+            q = fx.to_usat(canonical, currency)
+            return True, f"{canonical} {str(currency).upper()} ≈ {q['display']} USAT"
         atomic(canonical, symbol)
     except (ValueError, KeyError) as exc:
         return False, str(exc)

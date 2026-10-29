@@ -7,22 +7,33 @@ Security fixes (audit run-1):
   settled invoice.
 - invoice-lookup-not-scoped-to-requester: ids carry a random suffix, so the
   handle is a capability instead of a guessable counter.
+
+Multi-tenant (Phase 1): each invoice carries its own payout address, and a user
+registers the wallet they get paid at. Before this, every invoice paid one
+global INVOICE_WALLET, so onboarding a second freelancer — an "independent
+user" in the rules — was structurally impossible.
 """
 
 import json
 import os
+import re
 import secrets
 import time
 
 STORE_PATH = os.environ.get("INVOICE_STORE", "invoices.json")
 
+ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
+
 
 def _load() -> dict:
     try:
         with open(STORE_PATH) as f:
-            return json.load(f)
+            db = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        return {"seq": 0, "invoices": {}, "used_tx": {}}
+        db = {"seq": 0, "invoices": {}}
+    db.setdefault("used_tx", {})
+    db.setdefault("wallets", {})
+    return db
 
 
 def _save(db: dict) -> None:
@@ -32,8 +43,37 @@ def _save(db: dict) -> None:
     os.replace(tmp, STORE_PATH)
 
 
+# ------------------------------------------------------------------- payouts
+
+def set_wallet(user_id: int | str, address: str) -> str:
+    """Register the wallet a user gets paid at."""
+    if not ADDRESS_RE.match(address or ""):
+        raise ValueError(f"not an address: {address!r}")
+    db = _load()
+    db["wallets"][str(user_id)] = {"address": address, "set": int(time.time())}
+    _save(db)
+    return address
+
+
+def wallet_for(user_id: int | str) -> str | None:
+    return (_load()["wallets"].get(str(user_id)) or {}).get("address")
+
+
+def payout_for(invoice: dict) -> str:
+    """Invoice payout address, falling back to the operator wallet.
+
+    Resolving at read time (not write time) keeps invoices minted before
+    per-invoice routing working with no migration.
+    """
+    return invoice.get("payout_address") or os.environ.get("INVOICE_WALLET", "")
+
+
+# ------------------------------------------------------------------ invoices
+
 def create(draft: dict, screen: dict, creator: str,
-           created_block: int | None = None) -> dict:
+           created_block: int | None = None,
+           payout_address: str | None = None,
+           creator_chat_id: int | None = None) -> dict:
     db = _load()
     db["seq"] += 1
     db.setdefault("used_tx", {})
@@ -45,10 +85,12 @@ def create(draft: dict, screen: dict, creator: str,
         "created": int(time.time()),
         "created_block": created_block,
         "creator": creator,
+        "creator_chat_id": creator_chat_id,
         "amount": draft.get("amount"),
         "currency": draft.get("currency"),
         "recipient": draft.get("recipient"),
         "raw": draft.get("raw"),
+        "payout_address": payout_address,
         "trust": {
             "decision": screen.get("decision"),
             "suspicious_p": screen.get("suspicious_p"),
@@ -64,6 +106,11 @@ def create(draft: dict, screen: dict, creator: str,
 
 def get(inv_id: str) -> dict | None:
     return _load()["invoices"].get(str(inv_id).upper())
+
+
+def open_invoices() -> list[dict]:
+    """Every invoice still awaiting settlement — the watcher's work queue."""
+    return [i for i in _load()["invoices"].values() if i.get("status") == "open"]
 
 
 def tx_used(tx_hash: str) -> str | None:

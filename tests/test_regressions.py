@@ -241,9 +241,14 @@ def test_grouped_thousands_does_not_shrink_the_invoice():
     text = "charge Marco 1.500 BRL for the logo"
     assert "1.50" not in jev.amount_candidates(text)
     assert jev.normalize_amount_token("1.500") == "1500"
+    provider = lambda: {"rates": {"BRL": 5.0}, "as_of": "t", "fetched": 0, "source": "t"}
     req = x402.create_payment_request(
-        {"id": "INV-1", "amount": "1500", "currency": "BRL"}, "0xabc")
-    assert req["amount_atomic"] == 1_500 * 10**6
+        {"id": "INV-1", "amount": "1500", "currency": "BRL"}, "0xabc",
+        fx_provider=provider)
+    # 1500 BRL at 5.00 BRL/USD is 300 USA₮ — 1000x the value the old tokenizer's
+    # ['1.50','0'] candidates would have priced.
+    assert req["amount_atomic"] == 300 * 10**6
+    assert req["invoice_amount_display"] == "1500 BRL"
 
 
 @pytest.mark.parametrize("bad", ["-5", "+5", "5_0", "", "?", "1e3", "abc",

@@ -35,10 +35,14 @@ def test_atomic_math():
 
 
 def test_payment_request_shape():
+    # 500 BRL is NOT 500 USA₮ — pre-FX this priced a ~5.4x overcharge, so the
+    # rate is pinned here and the conversion is what gets asserted.
+    provider = lambda: {"rates": {"BRL": 5.0}, "as_of": "t", "fetched": 0, "source": "t"}
     req = x402.create_payment_request(
         {"id": "INV-0001", "amount": "500", "currency": "BRL"},
-        pay_to="0x000000000000000000000000000000000000dEaD")
-    assert req["symbol"] == "USAT" and req["amount_atomic"] == 500_000_000
+        pay_to="0x000000000000000000000000000000000000dEaD", fx_provider=provider)
+    assert req["symbol"] == "USAT" and req["amount_atomic"] == 100_000_000
+    assert req["invoice_amount_display"] == "500 BRL"
     assert req["chain"] == "eip155:42220"
 
 

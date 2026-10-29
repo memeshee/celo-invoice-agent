@@ -4,3 +4,4 @@ __pycache__/
 .env
 invoices.json
 *.log
+fx_cache.json

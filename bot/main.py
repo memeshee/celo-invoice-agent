@@ -31,6 +31,14 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("invoice-agent")
 
+# Where a payer opens the invoice. The bot hands out a link rather than raw
+# address instructions, so a payer who is not in this chat can still pay.
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1:8088").rstrip("/")
+
+
+def pay_url(inv_id: str) -> str:
+    return f"{PUBLIC_BASE_URL}/i/{inv_id}"
+
 # (chat_id, user_id) -> draft awaiting confirm. Keying by chat alone let any
 # member of a group act on another member's draft.
 PENDING: dict[tuple[int, int], dict] = {}
@@ -60,7 +68,9 @@ async def start(update: Update, _ctx) -> None:
     await must_msg(update).reply_text(
         "Send me an invoice as a sentence, e.g.\n"
         "`charge Marco 500 BRL for the logo, due Friday`\n"
-        "I'll parse it, screen it, and mint a USA₮ pay link."
+        "I'll parse it, screen it, and mint a pay link anyone can open.\n\n"
+        "First set where you get paid: `/wallet 0xYourAddress`\n"
+        "Then: /new, /pay, /check, /receipt"
     )
 
 
@@ -122,6 +132,8 @@ async def handle_text(update: Update, text: str) -> None:
         "draft": draft,
         "screen": screen,
         "message_id": getattr(msg, "message_id", None),
+        "chat_id": msg.chat_id,
+        "user_id": _user_id(msg.from_user),
     }
     kb = InlineKeyboardMarkup([[
         InlineKeyboardButton("✅ Mint pay link", callback_data="confirm"),
@@ -151,13 +163,25 @@ async def on_button(update: Update, _ctx) -> None:
     from . import x402
     inv = store.create(item["draft"], item["screen"],
                        creator=str(user.username or user.id),
-                       created_block=x402.head_block())
-    # Settlement URL arrives with x402 wiring; receipt carries trust either way.
+                       created_block=x402.head_block(),
+                       # The freelancer's own wallet, so a second user can be
+                       # paid without an operator editing the env.
+                       payout_address=store.wallet_for(user.id),
+                       creator_chat_id=item.get("chat_id") or getattr(qmsg, "chat_id", None) or q.from_user.id)
+    try:
+        req = x402.create_payment_request(inv, store.payout_for(inv))
+        settle = f"{req['amount_display']} {req['symbol']}"
+        if req.get("fx"):
+            settle += f" (from {req['invoice_amount_display']})"
+    except (ValueError, KeyError) as e:
+        settle = f"<unpriceable: {e}>"
     await q.edit_message_text(
         f"Minted {inv['id']}\n"
         f"{inv['amount']} {inv['currency']} → {inv['recipient']}\n"
-        f"Trust: {inv['trust']['decision']} ({inv['trust']['risk_level']})\n"
-        f"Pay: /pay {inv['id']}   Receipt: /receipt {inv['id']}"
+        f"Payer sends: {settle}\n"
+        f"Trust: {inv['trust']['decision']} ({inv['trust']['risk_level']})\n\n"
+        f"Pay link (send it to your client):\n{pay_url(inv['id'])}\n\n"
+        f"The agent watches Celo and settles this by itself. /receipt {inv['id']}"
     )
 
 
@@ -174,23 +198,26 @@ async def pay(update: Update, ctx) -> None:
         await msg.reply_text(f"{inv['id']} already settled: {inv['settlement_tx']}")
         return
     from . import x402
-    wallet = os.environ.get("INVOICE_WALLET", "")
+    wallet = store.payout_for(inv)
     if not wallet:
         await msg.reply_text(
-            f"{inv['id']} is minted but has no payer address yet "
-            "(operator: set INVOICE_WALLET)."
+            f"{inv['id']} is minted but has no payout address yet.\n"
+            "Set yours with /wallet 0x... then ask for /pay again."
         )
         return
     try:
         req = x402.create_payment_request(inv, wallet)
-    except ValueError as e:
+    except (ValueError, KeyError) as e:
         await msg.reply_text(f"Can't price that: {e}")
         return
+    detail = f"Pay {req['amount_display']} {req['symbol']} on Celo"
+    if req.get("fx"):
+        detail += f" (invoice {req['invoice_amount_display']})"
     await msg.reply_text(
-        f"Pay {req['amount_display']} {req['symbol']} on Celo to\n"
-        f"`{req['pay_to']}`\n"
+        f"{detail}\n\n{pay_url(inv['id'])}\n\n"
+        f"Address: `{req['pay_to']}`\n"
         f"Token: `{req['asset_contract']}`\n"
-        f"Then run /check {inv['id']}"
+        "The page confirms on its own once the transfer lands; /check forces it."
     )
 
 
@@ -208,13 +235,13 @@ async def check(update: Update, ctx) -> None:
         await msg.reply_text(f"{inv['id']} already settled: {inv['settlement_tx']}")
         return
     from . import x402
-    wallet = os.environ.get("INVOICE_WALLET", "")
+    wallet = store.payout_for(inv)
     if not wallet:
-        await msg.reply_text("No payer address configured yet.")
+        await msg.reply_text("No payout address on this invoice yet (/wallet 0x...).")
         return
     try:
         req = x402.create_payment_request(inv, wallet)
-    except ValueError as e:
+    except (ValueError, KeyError) as e:
         await msg.reply_text(f"Can't price that: {e}")
         return
     try:
@@ -266,12 +293,35 @@ async def receipt(update: Update, ctx) -> None:
     )
 
 
+async def wallet(update: Update, ctx) -> None:
+    """Register where this user gets paid — the multi-tenant unlock.
+
+    Without a per-user payout address every invoice paid the operator's wallet,
+    so a second freelancer could not be onboarded at all.
+    """
+    msg = must_msg(update)
+    if not ctx.args:
+        current = store.wallet_for(_user_id(msg.from_user))
+        await msg.reply_text(
+            f"Usage: /wallet 0xYourCeloAddress\nCurrent: {current or 'not set (falls back to the operator wallet)'}"
+        )
+        return
+    address = ctx.args[0].strip()
+    try:
+        store.set_wallet(_user_id(msg.from_user), address)
+    except ValueError as e:
+        await msg.reply_text(f"{e}. Send a 0x-prefixed 20-byte address.")
+        return
+    await msg.reply_text(f"Payout wallet set to {address}\nNew invoices pay you directly on Celo.")
+
+
 def main() -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not token:
         raise SystemExit("Set TELEGRAM_BOT_TOKEN in .env")
     app = Application.builder().token(token).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("wallet", wallet))
     app.add_handler(CommandHandler("new", new_invoice))
     app.add_handler(CommandHandler("pay", pay))
     app.add_handler(CommandHandler("check", check))
