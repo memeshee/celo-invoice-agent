@@ -1,0 +1,48 @@
+{
+ "date": "2026-10-30",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Celo USDC invoice factoring for LatAm SMEs",
+ "count": 2,
+ "results_count": 2,
+ "usdc_before_atomic": 479699,
+ "usdc_after_atomic": 469699,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.479699,
+ "usdc_after": 0.469699,
+ "usdc_spent": 0.01,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Celo USDC invoice factoring for LatAm SMEs",
+  "count": 2,
+  "results": [
+   {
+    "title": "Celo Invoices - About | Karma",
+    "url": "https://www.karmahq.org/project/celo-invoices-2/about",
+    "description": "By turning invoices into verifiable, tradable on-chain assets, we're bridging the global freelancer economy with decentralized finance, powered by Celo\u2019s mission-aligned stablecoin ecosystem.",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "Situation and evolution of Factoring in Latin America | ALVANTIA",
+    "url": "https://www.alvantia.com/en/situation-evolution-factoring-latin-america/",
+    "description": "Latin America has enormous potential for Factoring development (according to FCI, it represents 5% of the volume worldwide) which, based on the region\u2019s status as global leader in the implementation of e-invoicing, will be conducive to the necessary financial inclusion of its SMEs, a requirement for achieving greater and balanced socio-economic development.",
+    "age": "July 31, 2018",
+    "publishedAt": "2018-07-31T10:09:15.000Z"
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0x4fb919127840516c45866966ce51fe789786ecdcf3187c30dc2f13c1679b70a1",
+ "settlement_block": 81399762,
+ "settlement_status": "0x1",
+ "attempts": 1,
+ "elapsed_s": 4.0,
+ "payee": "0xabf4fabd7c416fb67202e5f9002389fc75e2a9d0"
+}
