@@ -222,7 +222,7 @@ def render_proof(data: dict) -> str:
     for p in data["purchases"]:
         link = (f'<a href="{_e(p["explorer"])}" target="_blank" rel="noreferrer">'
                 f'{_e((p["tx"] or "")[:12])}…</a>') if p["explorer"] else "—"
-        prows.append(f'<div class="row"><dt>{_e(p["slug"])} · ${_e(p["price"])}'
+        prows.append(f'<div class="row"><dt>{_e(p["slug"])} · ${_e(p["price"])} '
                      f'<span class="tag">{"paid" if p["ok"] else "failed"}'
                      f'{"" if p["verified"] else " · unverified"}</span></dt>'
                      f'<dd>{link}</dd></div>')
@@ -511,6 +511,28 @@ def render_invoice(payload: dict) -> str:
 </body></html>"""
 
 
+# Kept out of render_index's f-string: JS braces would be parsed as fields.
+_LIVE_JS = r'''<script>
+/* Same numbers, read from the app on load, so a statically hosted copy of this page
+   never shows stale counts. If the app cannot be reached, say so rather than
+   pretending the baked-in figures are current. */
+fetch('/api/proof').then(function (r) { return r.json(); }).then(function (d) {
+  var c = d.counts || {}, el = document.getElementById('live');
+  if (!el || c.settled == null) { return; }
+  var parts = [c.verified + '/' + c.settled + ' settlements proven onchain'];
+  if (c.purchases != null) { parts.push(c.purchases + ' paid service calls'); }
+  parts.push(c.independent
+    ? c.independent + ' from an independent payer'
+    : 'every payment so far is builder-funded: the rails work end to end, the users are still ours');
+  el.textContent = parts.join(' \u00b7 ');
+  el.dataset.live = '1';
+}).catch(function () {
+  var el = document.getElementById('live');
+  if (el) { el.textContent += ' \u00b7 app unreachable, numbers from the last build'; }
+});
+</script>'''
+
+
 def render_index(stats: dict | None = None) -> str:
     """The front door. A judge should understand the product in ten seconds."""
     counts = (stats or {}).get("counts") or {}
@@ -566,12 +588,13 @@ def render_index(stats: dict | None = None) -> str:
     <div class="row"><dt>Source</dt>
       <dd><a href="{REPO}" target="_blank" rel="noreferrer">github</a></dd></div>
   </dl>
-  <p class="live">{_e(lived)}</p>
+  <p class="live" id="live">{_e(lived)}</p>
   <a class="btn" href="https://t.me/notcelordbot" target="_blank" rel="noreferrer">
     Try it on Telegram</a>
   <div class="foot">Invoice pages live at <span class="mono">/i/&lt;invoice-id&gt;</span>.
   Every settlement claim on <a href="/proof">/proof</a> is re-derived from Celo
   (cached 60s), not read back out of our own database.</div>
+{_LIVE_JS}
 </main></body></html>"""
 
 

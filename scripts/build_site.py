@@ -50,13 +50,9 @@ def landing() -> str:
     except Exception as e:  # noqa: BLE001 — the deploy must not depend on the RPC
         print(f"live numbers unavailable ({type(e).__name__}); deploying without them")
         html = serve.render_index()
-    # The static copy is served from the project root, so a leading / is correct on
-    # the custom domain; mark it as a snapshot so nobody mistakes it for live state.
-    return html.replace(
-        "</main>",
-        '  <div class="foot" style="margin-top:10px">Static snapshot of this page — the '
-        'invoice pages and <a href="/proof">/proof</a> are served live.</div>\n</main>',
-    )
+    # The page hydrates its own numbers from /api/proof on load (see render_index), so
+    # the statically hosted copy does not need a "snapshot" disclaimer.
+    return html
 
 
 def main() -> int:

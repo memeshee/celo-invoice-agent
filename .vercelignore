@@ -1,5 +1,14 @@
-# Only the generated landing page and its rewrites need to ship.
-*
-!index.html
-!vercel.json
-!.nojekyll
+# Ignore heavy or local-only paths; everything else (landing page, rewrites, the demo
+# video) ships. Do NOT use "*" plus "!" negations here — Vercel did not honour them and
+# the video 404ed after a deploy that looked successful.
+.venv
+.git
+.vercel
+__pycache__
+.pytest_cache
+htmlcov
+.coverage
+*.log
+invoices.json
+fx_cache.json
+spend_ledger.json
