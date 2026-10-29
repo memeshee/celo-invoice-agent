@@ -7,7 +7,7 @@ reads `tokenURI(10005)` from `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` on Cel
 .venv/bin/python scripts/gen_erc8004_doc.py
 ```
 
-`agentURI` length onchain: **1381 chars** (`data:application/json;base64,…`).
+`agentURI` length onchain: **1545 chars** (`data:application/json;base64,…`).
 
 | field | value |
 |---|---|
@@ -26,6 +26,14 @@ reads `tokenURI(10005)` from `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` on Cel
 ```json
 {
   "active": true,
+  "attribution": {
+    "code": "celo_b97cdbaae280",
+    "codes_on_wire": [
+      "celo_b97cdbaae280",
+      "celo_invoiceagent"
+    ],
+    "standard": "ERC-8021"
+  },
   "description": "Turns one sentence into a settled stablecoin payment on Celo. Prices invoices, buys its own sanctions screening over x402, and proves settlement from the chain.",
   "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2Ij48cmVjdCB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgcng9IjQ4IiBmaWxsPSIjMGIxZjE2Ii8+PHRleHQgeD0iMTI4IiB5PSIxNTAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iODgiIGZpbGw9IiM1ZWVhZDQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlVTQTwvdGV4dD48dGV4dCB4PSIxMjgiIHk9IjIwMCIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSIzMCIgZmlsbD0iIzk0YTNiOCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+aW52b2ljZTwvdGV4dD48L3N2Zz4=",
   "name": "impay",

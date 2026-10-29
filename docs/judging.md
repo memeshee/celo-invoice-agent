@@ -44,7 +44,11 @@ reading the source first.
 - **Claims that did not hold up are still in the README**, with the transaction and
   the reason they were withdrawn. That is a better signal than a clean table.
 - **Attribution:** every transaction we sign carries the ERC-8021 Schema 0 suffix
-  (`bot/attribution.py`), verified on the wire. x402 settlements cannot carry one
+  (`bot/attribution.py`) with the assigned code `celo_b97cdbaae280` first. Evidence:
+  tx `0xf2ffab18…` decodes to `['celo_b97cdbaae280', 'celo_invoiceagent']`, and the
+  on-chain ERC-8004 card names the same code. Our x402 *purchases* cannot carry it —
+  the facilitator (`0xc077c1a9…`) broadcasts them via `transferWithAuthorization`,
+  and Celo's facilitator does not write Schema 2 tags yet
   (facilitator limitation), so the PayTo wallet is published in the README.
 
 ## Agent identity

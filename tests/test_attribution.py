@@ -27,7 +27,7 @@ def test_tag_appends_and_preserves_calldata():
     inner = "0xa9059cbb" + "00" * 64
     tagged = attribution.tag(inner)
     assert tagged.startswith(inner)                  # execution unchanged
-    assert attribution.from_calldata(tagged) == [attribution.app_code()]
+    assert attribution.from_calldata(tagged) == attribution.app_code().split(",")
 
 
 def test_round_trip_of_known_positive_fixture():
@@ -57,3 +57,41 @@ def test_rejects_bad_codes():
 def test_env_override_is_used(monkeypatch):
     monkeypatch.setenv("CELO_ATTRIBUTION_CODE", "celo_issued")
     assert attribution.from_calldata(attribution.tag("0x")) == ["celo_issued"]
+
+
+# ------------------------------------------------- the code the entry is scored on
+
+def test_the_assigned_code_is_on_the_wire(monkeypatch):
+    """The program credits the code it issued. A tag without it credits nobody,
+    and nothing on chain says so — this is the check that catches it."""
+    monkeypatch.delenv("CELO_ATTRIBUTION_CODE", raising=False)
+    from bot import attribution
+    assert attribution.ASSIGNED_CODE in attribution.from_calldata(
+        attribution.tag("0xdeadbeef"))
+    assert attribution.credits_this_entry()
+
+
+def test_a_stale_code_on_its_own_is_caught(monkeypatch):
+    """A code from before a rename (or any other value) must fail the guard."""
+    monkeypatch.setenv("CELO_ATTRIBUTION_CODE", "celo_somethingelse")
+    from bot import attribution
+    assert not attribution.credits_this_entry()
+
+
+def test_own_code_rides_alongside_the_assigned_one(monkeypatch):
+    monkeypatch.setenv("CELO_ATTRIBUTION_CODE", "celo_b97cdbaae280,celo_invoiceagent")
+    from bot import attribution
+    codes = attribution.from_calldata(attribution.tag("0x00"))
+    assert codes[0] == "celo_b97cdbaae280"
+    assert "celo_invoiceagent" in codes
+
+
+def test_default_configuration_credits_this_entry():
+    """The shipped configuration, with no environment, must already credit us."""
+    import importlib
+
+    from bot import attribution
+    importlib.reload(attribution)
+    with_no_env = attribution.DEFAULT_CODES
+    assert attribution.ASSIGNED_CODE in with_no_env
+    assert with_no_env[0] == attribution.ASSIGNED_CODE, "assigned code goes first"

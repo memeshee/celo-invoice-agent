@@ -38,8 +38,8 @@ def test_build_tagged_tx_is_tagged_and_legacy():
     built = chain.build_tagged_tx(USAT, chain.erc20_transfer_data(USAT, TO, 1),
                                   key=KEY, web3=FakeW3())
     # The tag is what makes the tx attributable; assert it survived signing input.
-    assert built["attribution"] == [attribution.app_code()]
-    assert attribution.from_calldata(built["tx"]["data"]) == [attribution.app_code()]
+    assert built["attribution"] == attribution.app_code().split(",")
+    assert attribution.from_calldata(built["tx"]["data"]) == attribution.app_code().split(",")
     # Legacy fee model: a 1559 tx gets dropped by Forno's mempool.
     assert "gasPrice" in built["tx"] and "maxFeePerGas" not in built["tx"]
     assert built["tx"]["chainId"] == 42220

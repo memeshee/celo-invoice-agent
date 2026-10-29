@@ -28,7 +28,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from dotenv import load_dotenv
 
-from . import ramp, services, store, x402
+from . import attribution, ramp, services, store, x402
 
 load_dotenv()  # the units run from the repo dir; .env is the single config source
 
@@ -202,8 +202,10 @@ def agent_card() -> dict:
         ],
         "settlement": {"chain": "eip155:42220", "pay_to": os.environ.get("INVOICE_WALLET", ""),
                        "assets": ["USAT", "USDC", "wBRL", "wARS", "wCOP", "wPEN", "wMXN", "wCLP"]},
-        "attribution": {"standard": "ERC-8021", "code": os.environ.get("CELO_ATTRIBUTION_CODE",
-                                                                       "celo_invoiceagent")},
+        "attribution": {"standard": "ERC-8021",
+                        "code": os.environ.get("CELO_ATTRIBUTION_CODE_ASSIGNED",
+                                               attribution.ASSIGNED_CODE),
+                        "codes_on_wire": attribution.app_code().split(",")},
     }
 
 

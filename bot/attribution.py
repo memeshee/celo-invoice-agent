@@ -28,14 +28,32 @@ import os
 ERC_8021_MARKER = bytes.fromhex("80218021802180218021802180218021")
 SCHEMA_0 = 0x00
 
-# Issued by the program you enrol in, or a custom code. Charset is enforced by
-# the SDK: /^[a-z0-9_]{1,32}$/.
-DEFAULT_CODE = "celo_invoiceagent"
+# A human-readable code of our own. Not scored by anything — kept so our own
+# analytics stay stable if the program issues a different code next time.
+OWN_CODE = "celo_invoiceagent"
+
+# The code the hackathon platform issued for this entry. It is NOT derivable from
+# the repository or a hostname — the platform can derive from anything it likes —
+# so it is configuration, and the one value that must be on the wire.
+ASSIGNED_CODE = os.environ.get("CELO_ATTRIBUTION_CODE_ASSIGNED", "celo_b97cdbaae280")
+
+DEFAULT_CODES = (ASSIGNED_CODE, OWN_CODE)
 
 
 def app_code() -> str:
-    """The code we tag with. Override with CELO_ATTRIBUTION_CODE once issued."""
-    return os.environ.get("CELO_ATTRIBUTION_CODE", DEFAULT_CODE).strip()
+    """The code(s) we tag with, comma-joined. Override with CELO_ATTRIBUTION_CODE."""
+    raw = os.environ.get("CELO_ATTRIBUTION_CODE", "").strip()
+    return raw or ",".join(DEFAULT_CODES)
+
+
+def credits_this_entry() -> bool:
+    """True when the suffix carries the code this entry is scored against.
+
+    Assert this at startup and in CI. Tagging with anything else produces
+    transactions that look attributed on chain and credit nobody — silently.
+    """
+    configured = {c.strip() for c in app_code().split(",") if c.strip()}
+    return ASSIGNED_CODE in configured
 
 
 def validate_code(code: str) -> str:

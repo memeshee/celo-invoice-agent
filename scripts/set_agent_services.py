@@ -74,6 +74,15 @@ def desired(meta: dict) -> dict:
     # /agent.json and this card must say the same thing about the same agent.
     out["x402Support"] = False
     out["active"] = True
+    # State the ERC-8021 code on the card itself. The registry only stores a URI,
+    # so the card is the one place an ERC-8004-aware reader can learn which code
+    # this agent's transactions are tagged with — and a card that omits it is how
+    # an entry ends up tagging with a value nothing credits.
+    out["attribution"] = {
+        "standard": "ERC-8021",
+        "code": attribution.ASSIGNED_CODE,
+        "codes_on_wire": attribution.app_code().split(","),
+    }
     out["registrations"] = [
         {"agentId": AGENT_ID, "agentRegistry": f"eip155:42220:{REGISTRY}"}
     ]
