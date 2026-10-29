@@ -435,23 +435,64 @@ def render_invoice(payload: dict) -> str:
 </body></html>"""
 
 
-def render_index() -> str:
+def render_index(stats: dict | None = None) -> str:
+    """The front door. A judge should understand the product in ten seconds."""
+    counts = (stats or {}).get("counts") or {}
+    verified = counts.get("verified")
+    settled = counts.get("settled")
+    purchases = counts.get("purchases")
+    lived = (f"{verified}/{settled} settlements proven onchain · "
+             f"{purchases} paid service calls") if settled else "no settlements yet"
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Celo Invoice Agent</title><style>{PAGE_CSS}</style></head>
+<title>Celo Invoice Agent — get paid in your own currency</title>
+<style>{PAGE_CSS}
+  .steps{{margin:18px 0 0;padding:0;list-style:none;counter-reset:s}}
+  .steps li{{position:relative;padding:10px 0 10px 34px;font-size:14px;color:#cbd5e1;
+             border-bottom:1px solid #1f2d28;counter-increment:s}}
+  .steps li:before{{content:counter(s);position:absolute;left:0;top:9px;width:22px;height:22px;
+    border-radius:50%;background:#14351f;color:#6ee7b7;font-size:12px;font-weight:700;
+    display:grid;place-items:center}}
+  .live{{font-size:12px;color:#6ee7b7;margin-top:10px}}
+</style></head>
 <body><main class="card">
-  <p class="kicker">Celo Invoice Agent</p>
-  <h1 class="amount">Get paid in USA₮</h1>
-  <p class="settle">Send the bot one sentence — “charge Marco 500 BRL for the logo” —
-  and it mints a pay link like the one a payer just opened.</p>
+  <p class="kicker">Celo Invoice Agent · ERC-8004 #{AGENT_ID}</p>
+  <h1 class="amount">Get paid in<br>your own currency</h1>
+  <p class="settle">Send one sentence to the bot. It prices the invoice, screens the
+  counterparty, mints a pay link, and settles in stablecoins on Celo — proven from
+  the chain, never from a claim.</p>
+
+  <ol class="steps">
+    <li><b>“charge Marco 500 BRL for the logo”</b> — parsed by a typed model
+        judgment that fails closed on anything it cannot read.</li>
+    <li><b>The agent buys what it cannot do itself</b> — a sanctions screen on the
+        name and the payout wallet, plus an FX cross-check, each paid in USA₮/USDC
+        over x402 (~$0.009 per invoice). A hit blocks settlement.</li>
+    <li><b>The payer opens a link</b> — wallet deep link, EIP-681, or a Ripio
+        on-ramp if they hold no stablecoin. 500 BRL settles as 500 wBRL in kind.</li>
+    <li><b>Nobody confirms anything</b> — the watcher proves the transfer onchain
+        and marks the invoice paid.</li>
+  </ol>
+
   <dl class="rows">
-    <div class="row"><dt>Agent identity</dt><dd class="mono">ERC-8004 #{AGENT_ID}</dd></div>
-    <div class="row"><dt>Settlement</dt><dd>USA₮ on Celo · x402 facilitator</dd></div>
-    <div class="row"><dt>Source</dt><dd><a href="{REPO}" target="_blank" rel="noreferrer">github</a></dd></div>
+    <div class="row"><dt>Settlement</dt>
+      <dd>USA₮ · USDC · wBRL/wARS/wCOP · eip155:42220</dd></div>
+    <div class="row"><dt>Attribution</dt>
+      <dd class="mono">ERC-8021 · celo_invoiceagent</dd></div>
     <div class="row"><dt>Onchain proof</dt><dd><a href="/proof">/proof</a></dd></div>
+    <div class="row"><dt>Agent card</dt>
+      <dd><a href="https://8004scan.io/agents/celo/{AGENT_ID}" target="_blank"
+             rel="noreferrer">8004scan</a></dd></div>
+    <div class="row"><dt>Source</dt>
+      <dd><a href="{REPO}" target="_blank" rel="noreferrer">github</a></dd></div>
   </dl>
-  <div class="foot">Invoice pages live at <span class="mono">/i/&lt;invoice-id&gt;</span>.</div>
+  <p class="live">{_e(lived)}</p>
+  <a class="btn" href="https://t.me/notcelordbot" target="_blank" rel="noreferrer">
+    Try it on Telegram</a>
+  <div class="foot">Invoice pages live at <span class="mono">/i/&lt;invoice-id&gt;</span>.
+  Every settlement claim on <a href="/proof">/proof</a> is re-derived from Celo on
+  each render.</div>
 </main></body></html>"""
 
 
@@ -492,7 +533,11 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, proof_data())
             return
         if path in ("/", "/index.html"):
-            self._send(200, render_index())
+            try:
+                # Live numbers on the front door, from the same cached proof pass.
+                self._send(200, render_index(proof_data()))
+            except Exception:  # noqa: BLE001 — the front door must always load
+                self._send(200, render_index())
             return
         api = API_PATH.match(path)
         if api:

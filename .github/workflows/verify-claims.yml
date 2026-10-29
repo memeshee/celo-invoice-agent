@@ -1,0 +1,25 @@
+name: verify-claims
+
+# Re-derives every settlement claim from Celo and fails loudly if one stops
+# holding up. Badges are cheap; this is the check behind the numbers in the README.
+on:
+  schedule:
+    - cron: "17 6 * * *"     # daily, once the store has had a day to settle
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+
+      - name: Verify settlement claims onchain
+        env:
+          # Public, not a secret: the wallet that receives invoices.
+          INVOICE_WALLET: "0x86E95581E41946ED84956433a8a9c836bCbA636c"
+          CELO_RPC_URL: "https://forno.celo.org"
+        run: python scripts/verify_settlements.py
