@@ -8,10 +8,20 @@ page anyone can open, watches Celo for the money, and marks the invoice paid
 
 Built for the Celo *Agents on Open Rails* hackathon. Celo mainnet only.
 
+- **Live pages:** https://newsletter-effect-backgrounds-attribute.trycloudflare.com
+  — [`/proof`](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/proof)
+  re-verifies every onchain claim on each render
 - **Bot:** https://t.me/notcelordbot
-- **Agent identity:** ERC-8004 `agentId 10005` on Celo
-- **Invoice page:** `GET /i/<invoice-id>` (served by `bot/serve.py`; set
-  `PUBLIC_BASE_URL` to the hostname in front of it)
+- **Agent identity:** ERC-8004 `agentId 10005` on Celo — the onchain card declares
+  this service as its `web` endpoint (`services[]`), so the endpoint and the
+  registry cannot disagree
+- **Invoice page:** `GET /i/<invoice-id>`
+
+Hosting note, stated plainly: the public URL is a Cloudflare *quick tunnel*
+(`scripts/tunnel_sync.sh`), because the domain route needs a dashboard action this
+build could not perform. The hostname is reborn when the tunnel restarts, so the
+wrapper re-syncs `PUBLIC_BASE_URL` and re-writes the ERC-8004 `services[]` on every
+change — an advertisement pointing at a dead endpoint is worse than none.
 
 ```
 charge Marco 500 BRL for the logo, due Friday
@@ -42,6 +52,7 @@ them as users.
 | What | Transaction |
 |---|---|
 | ERC-8004 agent identity registered (`agentId 10005`) | [`0x9c101fb0…2b70`](https://celoscan.io/tx/0x9c101fb0dcbfeba0d95c0172b22c996bec949a4d908b4daeaf486c0cd12b2b70) |
+| Agent card updated onchain to declare its live `web` service (`setAgentURI`, ERC-8021 tagged) | [`0xa9416d84…9b1e64`](https://celoscan.io/tx/0xa9416d841b049e3546bab955cff3388ef2b160b9f468f28342da557bea9b1e64) |
 | Invoice paid 0.02 USA₮ → settled autonomously, no human | [`0x8a19fcc4…c724c4`](https://celoscan.io/tx/0x8a19fcc4139524502b52cc25748b9a40bee64384d09986b8f809690b77c724c4) |
 | Invoice paid 0.998543 USA₮ (bridged in from another address) | [`0xe5796183…1073ee`](https://celoscan.io/tx/0xe5796183431382dd8e2e543b11140497420c8bb09cc35f5a24a52e76d731073e) |
 | Agent buys an FX rate — $0.002 | [`0x1e2be36e…c51b4`](https://celoscan.io/tx/0x1e2be36e4eceb26a1908ccd1decbf35d29a5f411ab5dcf00c269e7fdad0c51b4) |
