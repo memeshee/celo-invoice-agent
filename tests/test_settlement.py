@@ -63,11 +63,18 @@ def test_textile_takerproof_auth():
     tp = textile.taker_proof(key.group(1))
     assert tp["taker"].startswith("0x") and len(tp["proof"]["signature"]) == 132
     try:
-        textile.request_quote("USDT", "USDC", "10000", tp["taker"], tp["proof"])
+        # Sell above Textile's RFQ minimum (1000000 atomic): below it the API
+        # rejects on size before it ever looks at the signature, which silently
+        # turns this auth control into a no-op.
+        textile.request_quote("USDT", "USDC", "1100000", tp["taker"], tp["proof"])
     except urllib.error.HTTPError as e:
         assert e.code != 401, "takerProof signature rejected"
         body = e.read().decode()
-        assert "insufficient" in body or "funds" in body, body
+        low = body.lower()
+        # What this controls is AUTH, not balance. Any other refusal
+        # (insufficient funds, RFQ minimum, no makers online) still proves the
+        # takerProof verified, so do not lock the assertion to one of them.
+        assert "signature" not in low and "unauthorized" not in low, body
 
 
 def test_watch_empty_window_shape():
