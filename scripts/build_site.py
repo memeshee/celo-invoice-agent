@@ -22,7 +22,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(os.path.join(ROOT, ".env"))
 
-SITE_DIR = os.path.join(ROOT, "site")
+SITE_DIR = ROOT  # the repo root is the deployable site
 ORIGIN = os.environ.get("ORIGIN_BASE_URL") or os.environ.get("PUBLIC_BASE_URL", "")
 # Paths that must hit the live process rather than the static files.
 DYNAMIC = ["/i/:path*", "/proof", "/api/:path*", "/agent.json", "/health"]
@@ -36,6 +36,7 @@ def vercel_json(origin: str) -> dict:
         ],
         # A judge wandering to a path we do not own should land on the front page,
         # not a 404.
+        # Keep the upload to the two files that matter; the repo is mostly Python.
         "cleanUrls": True,
         "trailingSlash": False,
     }

@@ -14,3 +14,5 @@ htmlcov/
 site/.vercel/
 site/.env.local
 .site_url
+.vercel
+.env*

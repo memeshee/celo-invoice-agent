@@ -1,0 +1,5 @@
+# Only the generated landing page and its rewrites need to ship.
+*
+!index.html
+!vercel.json
+!.nojekyll

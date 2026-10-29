@@ -28,9 +28,10 @@ esac
 PY="$REPO/.venv/bin/python"
 "$PY" scripts/build_site.py --origin "$ORIGIN"
 
-# Vercel CLI: deploy from site/, force so a cached build cannot serve a stale proxy
-# target, and --yes so it never prompts (this runs from a systemd unit).
-cd "$REPO/site"
+# Vercel CLI: deploy from the repo root (the project's root directory), force so a
+# cached build cannot serve a stale proxy target, and --yes so it never prompts (this
+# runs from a systemd unit).
+cd "$REPO"
 PROJECT=celo-invoice-agent
 vercel link --project "$PROJECT" --yes >/dev/null 2>&1 || true
 OUT=$(vercel deploy --prod --force --yes 2>&1)
