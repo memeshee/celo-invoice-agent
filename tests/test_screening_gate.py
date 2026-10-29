@@ -106,3 +106,46 @@ def test_a_crashed_enrichment_marks_the_invoice_for_retry(monkeypatch):
     assert not watch.screening_allows(after)
     # and it is picked up again by the next loop, so it is not parked forever
     assert inv["id"] in [i["id"] for i in store.invoices_awaiting_services()]
+
+
+# ------------------------------------------------------- screen routing policy
+
+def _screen(monkeypatch, susp, level, dup=0.02, pressure=0.05):
+    """Route through the real screen_invoice with only the model stubbed out."""
+    from bot import jev
+    monkeypatch.setattr(jev, "ask", lambda *a, **k: {
+        "is_suspicious": {"noul": susp},
+        "is_duplicate": {"noul": dup},
+        "uses_pressure": {"noul": pressure},
+        "risk_level": {"score": level},
+    })
+    return jev.screen_invoice({"amount": "500", "currency": "BRL", "recipient": "Marco",
+                               "raw": "charge Marco 500 BRL for the logo, due Friday"})
+
+
+def test_an_ordinary_sentence_is_not_held_by_its_label(monkeypatch):
+    """Measured live: 9% suspicion, label 'review' — and the bot held every invoice.
+
+    A gate nobody can pass is not a gate, so the probability decides and the label
+    only holds when a number agrees with it.
+    """
+    monkeypatch.delenv("SCREEN_STRICT", raising=False)
+    s = _screen(monkeypatch, 0.09, "review")
+    assert s["decision"] == "settle", s
+
+
+def test_high_suspicion_blocks_even_when_the_numbers_are_the_only_signal(monkeypatch):
+    monkeypatch.delenv("SCREEN_STRICT", raising=False)
+    assert _screen(monkeypatch, 0.95, "review")["decision"] == "block"
+    assert _screen(monkeypatch, 0.60, "clean")["decision"] == "review"
+
+
+def test_the_label_still_blocks_on_its_own(monkeypatch):
+    """Fail safe: a categorical 'block' from the model is never argued with."""
+    monkeypatch.delenv("SCREEN_STRICT", raising=False)
+    assert _screen(monkeypatch, 0.05, "block")["decision"] == "block"
+
+
+def test_strict_mode_restores_the_label_veto(monkeypatch):
+    monkeypatch.setenv("SCREEN_STRICT", "1")
+    assert _screen(monkeypatch, 0.09, "review")["decision"] == "review"

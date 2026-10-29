@@ -549,6 +549,10 @@ def render_index(stats: dict | None = None) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>impay — get paid in your own currency</title>
 <style>{PAGE_CSS}
+  .how{{margin:22px 0 6px;font-size:13px;letter-spacing:1.2px;color:#5eead4;text-transform:uppercase}}
+  .use{{margin:0;padding-left:20px;font-size:14px;color:#cbd5e1}}
+  .use li{{margin:7px 0}}
+  .usenote{{margin:8px 0 0;font-size:12.5px;color:#94a3b8}}
   .steps{{margin:18px 0 0;padding:0;list-style:none;counter-reset:s}}
   .steps li{{position:relative;padding:10px 0 10px 34px;font-size:14px;color:#cbd5e1;
              border-bottom:1px solid #1f2d28;counter-increment:s}}
@@ -588,6 +592,19 @@ def render_index(stats: dict | None = None) -> str:
     <div class="row"><dt>Source</dt>
       <dd><a href="{REPO}" target="_blank" rel="noreferrer">github</a></dd></div>
   </dl>
+  <h2 class="how">How to use the bot</h2>
+  <ol class="use">
+    <li>Open <a href="https://t.me/notcelordbot" target="_blank" rel="noreferrer">@notcelordbot</a>
+        in Telegram and press Start. The command menu is there; <span class="mono">/help</span>
+        lists everything.</li>
+    <li>Send one sentence — for example
+        <span class="mono">charge Marco 500 BRL for the logo, due Friday</span></li>
+    <li>It replies with the amount, the currencies it can settle in, and a pay link like
+        <span class="mono">/i/INV-0007-2782D9</span>. Send that link to whoever pays.</li>
+  </ol>
+  <p class="usenote">Before your first invoice, tell it where to send the money:
+  <span class="mono">/wallet 0xYourAddress</span>, or
+  <span class="mono">/wallet 0xYourAddress wBRL</span> to be paid in reais in kind.</p>
   <p class="live" id="live">{_e(lived)}</p>
   <a class="btn" href="https://t.me/notcelordbot" target="_blank" rel="noreferrer">
     Try it on Telegram</a>

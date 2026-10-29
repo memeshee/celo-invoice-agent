@@ -179,6 +179,11 @@ def _as_float(value, default):
     return default
 
 
+# Thresholds for screen_invoice's routing. Named, exported and tested, because a
+# gate whose numbers live inline is a gate nobody can reason about.
+REVIEW_SUSPICION = float(os.environ.get("SCREEN_REVIEW_AT", "0.35"))
+BLOCK_SUSPICION = float(os.environ.get("SCREEN_BLOCK_AT", "0.80"))
+
 SCREEN_LEVELS = ["clean", "review", "block"]
 
 
@@ -200,9 +205,13 @@ def trust_reasons(screen: dict) -> list[str]:
         if isinstance(value, (int, float)) and value >= floor:
             reasons.append(f"{text} ({value:.2f})")
     level = screen.get("risk_level")
-    if level == "block":
+    decision = screen.get("decision")
+    # Only explain the decision that was actually taken. Reporting the model's
+    # label after a settle read as a contradiction in the chat: "Trust: settle"
+    # followed by "Why: flagged for a human glance".
+    if level == "block" and decision != "settle":
         reasons.append("scored 'block' by the risk model")
-    elif level == "review" and not reasons:
+    elif level == "review" and decision != "settle" and not reasons:
         reasons.append("flagged for a human glance by the risk model")
     return reasons
 
@@ -246,11 +255,26 @@ def screen_invoice(invoice: dict, recent_descriptions: list[str] | None = None) 
     level = score_ans.get("score") if isinstance(score_ans, dict) else None
     if level not in SCREEN_LEVELS:
         level = "review"  # fail closed on missing or off-vocabulary answers
-    # Code-side gate: block on high suspicion or block-level score, review on mid.
+    # Which signal wins when they disagree.
+    #
+    # The model answers two different things: a probability (is_suspicious) and a
+    # coarse label (risk_level). Treating the label as an independent veto held
+    # every ordinary invoice: measured live, "charge Marco 500 BRL for the logo, due
+    # Friday" came back suspicious_p=0.09 — nine percent — with risk_level="review",
+    # so the bot answered a normal sentence with "held for review" and never minted
+    # a pay link. A gate nobody can pass is not a gate.
+    #
+    # The probability is the calibrated answer, so the policy is written on the
+    # numbers; "block" from the label still blocks (fail safe), "review" from the
+    # label only holds when a number agrees with it. SCREEN_STRICT=1 restores the
+    # old behaviour for an operator who wants the label to veto.
+    strict = os.environ.get("SCREEN_STRICT", "0").lower() in ("1", "true", "yes")
     decision = "settle"
-    if susp >= 0.8 or level == "block":
+    if susp >= BLOCK_SUSPICION or level == "block" or (pressure or 0) >= 0.8:
         decision = "block"
-    elif susp >= 0.5 or dup >= 0.5 or level == "review":
+    elif susp >= REVIEW_SUSPICION or dup >= 0.5 or (pressure or 0) >= 0.6:
+        decision = "review"
+    elif strict and level == "review":
         decision = "review"
     return {
         "suspicious_p": susp,

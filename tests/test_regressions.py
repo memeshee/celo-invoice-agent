@@ -64,9 +64,7 @@ def isolated_state(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "STORE_PATH", str(tmp_path / "invoices.json"))
     monkeypatch.setattr(buy, "SPEND_LEDGER", str(tmp_path / "ledger.json"))
     monkeypatch.setenv("INVOICE_WALLET", "0x86E95581E41946ED84956433a8a9c836bCbA636c")
-    main.PENDING.clear()
     yield
-    main.PENDING.clear()
 
 
 class Hex:
@@ -160,23 +158,6 @@ def cmd(args, chat_id=1, user_id=7, message_id=100):
     """(update, ctx) pair for the /pay, /check and /receipt handlers."""
     msg = FakeMsg(chat_id, user_id, message_id=message_id)
     return SimpleNamespace(message=msg), SimpleNamespace(args=args)
-
-
-class FakeQuery:
-    def __init__(self, data, chat_id=1, user_id=7, message_id=100):
-        self.data = data
-        self.from_user = SimpleNamespace(id=user_id, username=f"user{user_id}")
-        self.message = SimpleNamespace(chat_id=chat_id, message_id=message_id)
-        self.edits = []
-        self.alerts = []
-
-    async def answer(self, text=None, show_alert=False, **kwargs):
-        self.alerts.append(text)
-        return True
-
-    async def edit_message_text(self, text, **kwargs):
-        self.edits.append(text)
-        return self.message
 
 
 def run(coro):
@@ -293,7 +274,7 @@ def test_unpriceable_draft_never_reaches_the_mint_button(monkeypatch):
         "recipient": "Marco", "raw": text})
     update = msg_update("charge Marco 100 PEN")
     run(main.handle_text(update, "charge Marco 100 PEN"))
-    assert main.PENDING == {}
+    assert store.open_invoices() == [], 'nothing may be minted here'
     assert "Can't price that" in update.message.sent
 
 
@@ -304,7 +285,7 @@ def test_screening_failure_refuses_the_draft(monkeypatch):
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("typesafe down")))
     update = msg_update("charge Marco 100 USDT")
     run(main.handle_text(update, "charge Marco 100 USDT"))
-    assert main.PENDING == {}
+    assert store.open_invoices() == [], 'nothing may be minted here'
     assert "won't mint" in update.message.sent
 
 
@@ -314,17 +295,25 @@ def test_review_verdict_is_a_hold_not_a_mint(monkeypatch):
         "decision": "review", "risk_level": "review", "suspicious_p": 0.6})
     update = msg_update("charge Marco 100 USDT")
     run(main.handle_text(update, "charge Marco 100 USDT"))
-    assert main.PENDING == {}
+    assert store.open_invoices() == [], 'nothing may be minted here'
     assert "Held for review" in update.message.sent
 
 
-def test_clean_verdict_still_offers_the_mint_button(monkeypatch):
+def test_a_clean_verdict_mints_immediately_and_hands_back_a_pay_link(monkeypatch):
+    """A tap on every clean invoice was friction on the happy path — and, measured
+    live, the tap was the point where a first-time user stalled."""
     monkeypatch.setattr(jev, "parse_invoice", lambda text: dict(DRAFT, raw=text))
     monkeypatch.setattr(jev, "screen_invoice", lambda *a, **k: {
-        "decision": "settle", "risk_level": "clean", "suspicious_p": 0.0})
+        "decision": "settle", "risk_level": "clean", "suspicious_p": 0.0,
+        "duplicate_p": 0.0, "pressure_p": 0.0})
+    monkeypatch.setattr(x402, "head_block", lambda: 14000)
     update = msg_update("charge Marco 100 USDT")
     run(main.handle_text(update, "charge Marco 100 USDT"))
-    assert (1, 7) in main.PENDING
+    invs = list(store._load()["invoices"].values())
+    assert len(invs) == 1, "a clean sentence must produce an invoice"
+    sent = "\n".join(update.message.replies)
+    assert "Minted" in sent and "/i/" in sent, "the reply must carry the pay link"
+    assert invs[0]["created_block"] == 14000
 
 
 def test_screen_answers_off_schema_never_settle(monkeypatch):
@@ -437,44 +426,28 @@ def test_check_wraps_unpriceable_invoice(monkeypatch):
 
 
 # --------------------------------------------- 6. pending drafts are authored
-def test_foreign_button_press_cannot_mint(monkeypatch):
+def test_a_held_verdict_mints_nothing_and_leaves_a_ticket(monkeypatch):
+    """The other half of the rule: a hold must not produce a payable invoice."""
     monkeypatch.setattr(jev, "parse_invoice", lambda text: dict(DRAFT, raw=text))
     monkeypatch.setattr(jev, "screen_invoice", lambda *a, **k: {
-        "decision": "settle", "risk_level": "clean", "suspicious_p": 0.0})
-    monkeypatch.setattr(x402, "head_block", lambda: 14000)
-    run(main.handle_text(msg_update("charge Marco 100 USDT", user_id=7), "x"))
-    assert (1, 7) in main.PENDING
-
-    attacker = FakeQuery("confirm", user_id=99)
-    run(main.on_button(SimpleNamespace(callback_query=attacker), SimpleNamespace()))
-    assert attacker.edits == []
-    assert (1, 7) in main.PENDING
-    assert store.recent_descriptions() == []
-
-    author = FakeQuery("confirm", user_id=7)
-    run(main.on_button(SimpleNamespace(callback_query=author), SimpleNamespace()))
-    assert author.edits and "Minted" in author.edits[0]
-    assert (1, 7) not in main.PENDING
-    assert len(store._load()["invoices"]) == 1
+        "decision": "review", "risk_level": "review", "suspicious_p": 0.9,
+        "duplicate_p": 0.1, "pressure_p": 0.1})
+    update = msg_update("charge Marco 100 USDT")
+    run(main.handle_text(update, "charge Marco 100 USDT"))
+    invs = list(store._load()["invoices"].values())
+    assert len(invs) == 1 and invs[0]["status"] == "held"
+    assert "/i/" not in "\n".join(update.message.replies)
+    assert store.open_invoices() == []
 
 
-def test_stale_button_press_on_a_replaced_draft_is_refused():
-    main.PENDING[(1, 7)] = {"draft": dict(DRAFT), "screen": {"decision": "settle"},
-                            "message_id": 100}
-    stale = FakeQuery("confirm", user_id=7, message_id=42)
-    run(main.on_button(SimpleNamespace(callback_query=stale), SimpleNamespace()))
-    assert stale.edits == []
-    assert (1, 7) in main.PENDING
-
-
-def test_minted_invoice_records_its_creation_block(monkeypatch):
+def test_minted_invoice_records_the_block_it_was_created_at(monkeypatch):
+    """The watcher needs this: transfers older than the invoice are not its payment."""
+    monkeypatch.setattr(jev, "parse_invoice", lambda text: dict(DRAFT, raw=text))
+    monkeypatch.setattr(jev, "screen_invoice", lambda *a, **k: {
+        "decision": "settle", "risk_level": "clean", "suspicious_p": 0.0,
+        "duplicate_p": 0.0, "pressure_p": 0.0})
     monkeypatch.setattr(x402, "head_block", lambda: 123456)
-    main.PENDING[(1, 7)] = {"draft": dict(DRAFT),
-                            "screen": {"decision": "settle", "risk_level": "clean",
-                                       "suspicious_p": 0.0},
-                            "message_id": 100}
-    run(main.on_button(SimpleNamespace(callback_query=FakeQuery("confirm")),
-                       SimpleNamespace()))
+    run(main.handle_text(msg_update("charge Marco 100 USDT"), "charge Marco 100 USDT"))
     inv = list(store._load()["invoices"].values())[0]
     assert inv["created_block"] == 123456
 

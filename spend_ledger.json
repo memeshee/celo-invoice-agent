@@ -1,7 +1,7 @@
 {
-  "total_usd": 0.326,
+  "total_usd": 0.343,
   "hosts": {
-    "agent402.tools": 0.326
+    "agent402.tools": 0.343
   },
   "issued": {
     "0x837ee5a4b5739b7da4ac90c29eaf4623c3d14a56d5a4cb3141b482a49e7d3573": {
@@ -213,6 +213,21 @@
       "url": "https://agent402.tools/api/sanctions/name",
       "amount_atomic": 5000,
       "at": 1793281934
+    },
+    "0x985e5e5166a3a5a12ae47590ebd4fcb0705eafe06080e321276afea15cb8e152": {
+      "url": "https://agent402.tools/api/sanctions/wallet",
+      "amount_atomic": 2000,
+      "at": 1793300438
+    },
+    "0x5b29c944c1233abc40da8639e68ccc88fda02b6ad3ceedc546393134024cf506": {
+      "url": "https://agent402.tools/api/sanctions/name",
+      "amount_atomic": 5000,
+      "at": 1793300443
+    },
+    "0x0dd8a3b92a4bf366fd7a0bcbe3dd677c0a7758166098e9edff0aab3b0e72123a": {
+      "url": "https://agent402.tools/api/search",
+      "amount_atomic": 10000,
+      "at": 1793300517
     }
   }
 }

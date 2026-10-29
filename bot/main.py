@@ -4,10 +4,6 @@
 Settlement wiring (x402/Textile/buy) lands in their modules; bot calls them.
 
 Security fixes (audit run-1):
-- pending-draft-not-bound-to-author: PENDING is keyed by (chat_id, user_id) and
-  the confirm/drop callback must come from the draft's author on the draft's own
-  message, so a group member can no longer mint, drop or replace someone else's
-  draft.
 - screen-fail-open-mintable-draft: a screening failure now refuses the draft,
   and only a "settle" verdict reaches the mint button. "review" is a real hold.
 - unbound-settlement-proof / settled-receipt-rewrite-on-recheck: /check scans
@@ -22,10 +18,9 @@ import logging
 import os
 
 from dotenv import load_dotenv
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram import Message, Update
 from telegram.ext import (
     Application,
-    CallbackQueryHandler,
     CommandHandler,
     MessageHandler,
     filters,
@@ -47,7 +42,6 @@ def pay_url(inv_id: str) -> str:
 
 # (chat_id, user_id) -> draft awaiting confirm. Keying by chat alone let any
 # member of a group act on another member's draft.
-PENDING: dict[tuple[int, int], dict] = {}
 
 
 def _pct(value) -> str:
@@ -84,14 +78,49 @@ def _creator(msg) -> str:
     return str(getattr(user, "username", None) or getattr(user, "id", 0) or 0)
 
 
+HELP_TEXT = (
+    "*impay* — send one sentence, get a payable invoice on Celo.\n"
+    "\n"
+    "*Try it right now* (nothing to install):\n"
+    "`charge Marco 500 BRL for the logo, due Friday`\n"
+    "I read it into amount, currency and counterparty, buy the sanctions screens\n"
+    "for that invoice over x402, and reply with a link anyone can pay.\n"
+    "\n"
+    "*Setup* (once):\n"
+    "`/wallet 0xYourAddress` — where you get paid. Add an asset for in-kind:\n"
+    "`/wallet 0xYourAddress wBRL` (or USAT, wARS, wMXN, wCOP, wPEN, wCLP).\n"
+    "\n"
+    "*Commands*\n"
+    "`/start` this message · `/help` this message\n"
+    "`/wallet` show or set the payout address\n"
+    "`/new <sentence>` same as just typing the sentence\n"
+    "`/pay <id>` pay link + amount for an invoice\n"
+    "`/check <id>` re-check the chain now instead of waiting for the watcher\n"
+    "`/receipt <id>` what the agent bought for that invoice\n"
+    "`/held` invoices waiting on a human · `/release <id>` · `/drop <id>`\n"
+    "\n"
+    "Settlement is proven from Celo, never from a claim: [/proof]({proof})\n"
+    "A sanctions hit blocks the invoice until an operator clears it."
+)
+
+
 async def start(update: Update, _ctx) -> None:
     await must_msg(update).reply_text(
-        "Send me an invoice as a sentence, e.g.\n"
-        "`charge Marco 500 BRL for the logo, due Friday`\n"
-        "I'll parse it, screen it, and mint a pay link anyone can open.\n\n"
-        "First set where you get paid: `/wallet 0xYourAddress`\n"
-        "Then: /new, /pay, /check, /receipt"
+        HELP_TEXT.format(proof=PUBLIC_BASE_URL.rstrip("/") + "/proof"),
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
     )
+
+
+async def help_cmd(update: Update, _ctx) -> None:
+    await start(update, _ctx)
+
+
+async def unknown(update: Update, _ctx) -> None:
+    """A command we do not have must not answer with silence."""
+    cmd = (must_msg(update).text or "").split()[0]
+    await must_msg(update).reply_text(
+        f"I don't know {cmd}. /help lists everything I can do.")
 
 
 async def new_invoice(update: Update, ctx) -> None:
@@ -166,7 +195,10 @@ async def handle_text(update: Update, text: str, ctx=None) -> None:
         )
         await ping_operator(ctx, held, reasons)
         return
-    PENDING[(msg.chat_id, _user_id(msg.from_user))] = {
+    # The screener already decided; asking for a tap on every clean invoice is
+    # friction on the happy path and the thing a first-time user stalls on. Mint
+    # immediately, and keep the button for the cases where the verdict is a hold.
+    item = {
         "draft": draft,
         "screen": screen,
         "message_id": getattr(msg, "message_id", None),
@@ -174,40 +206,22 @@ async def handle_text(update: Update, text: str, ctx=None) -> None:
         "user_id": _user_id(msg.from_user),
         "settle_asset": settle_asset,
     }
-    kb = InlineKeyboardMarkup([[
-        InlineKeyboardButton("✅ Mint pay link", callback_data="confirm"),
-        InlineKeyboardButton("❌ Drop", callback_data="drop"),
-    ]])
-    await msg.reply_text(fmt_draft(draft, screen), reply_markup=kb)
+    await mint_and_reply(msg, item, user_id=_user_id(msg.from_user))
 
 
-async def on_button(update: Update, _ctx) -> None:
-    q = update.callback_query
-    assert q is not None, "button handler needs a callback query"
-    await q.answer()
-    qmsg = q.message
-    assert qmsg is not None and q.data is not None
-    chat_id: int = getattr(qmsg, "chat_id", None) or q.from_user.id
-    key = (chat_id, _user_id(q.from_user))
-    item = PENDING.get(key)
-    if item is None or item.get("message_id") != getattr(qmsg, "message_id", None):
-        # A foreign press, a stale draft, or a replaced slot: touch nothing.
-        await q.answer(text="This draft isn't yours (or it was replaced).", show_alert=False)
-        return
-    PENDING.pop(key, None)
-    if q.data == "drop":
-        await q.edit_message_text("Dropped.")
-        return
-    user = q.from_user
+async def mint_and_reply(msg, item: dict, user_id: int, creator: str | None = None):
+    """Create the invoice and send the pay link. Shared by the chat and the button."""
     from . import x402
     inv = store.create(item["draft"], item["screen"],
-                       creator=str(user.username or user.id),
+                       creator=creator or str(user_id),
                        created_block=x402.head_block(),
                        # The freelancer's own wallet, so a second user can be
                        # paid without an operator editing the env.
-                       payout_address=store.wallet_for(user.id),
-                       creator_chat_id=item.get("chat_id") or getattr(qmsg, "chat_id", None) or q.from_user.id,
+                       payout_address=store.wallet_for(user_id),
+                       creator_chat_id=item.get("chat_id") or getattr(msg, "chat_id", None) or user_id,
                        settle_asset=item.get("settle_asset"))
+    if inv is None:
+        return None
     try:
         req = x402.create_payment_request(inv, store.payout_for(inv))
         settle = f"{req['amount_display']} {req['symbol']}"
@@ -215,7 +229,7 @@ async def on_button(update: Update, _ctx) -> None:
             settle += f" (from {req['invoice_amount_display']})"
     except (ValueError, KeyError) as e:
         settle = f"<unpriceable: {e}>"
-    await q.edit_message_text(
+    await msg.reply_text(
         f"Minted {inv['id']}\n"
         f"{inv['amount']} {inv['currency']} → {inv['recipient']}\n"
         f"Payer sends: {settle}\n"
@@ -516,6 +530,7 @@ def main() -> None:
         raise SystemExit("Set TELEGRAM_BOT_TOKEN in .env")
     app = Application.builder().token(token).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("wallet", wallet))
     app.add_handler(CommandHandler("new", new_invoice))
     app.add_handler(CommandHandler("pay", pay))
@@ -524,8 +539,9 @@ def main() -> None:
     app.add_handler(CommandHandler("release", release))
     app.add_handler(CommandHandler("drop", drop))
     app.add_handler(CommandHandler("held", held))
-    app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, new_invoice))
+    # Last in the chain: anything that is still a command is one we do not implement.
+    app.add_handler(MessageHandler(filters.COMMAND, unknown))
     app.run_polling()
 
 

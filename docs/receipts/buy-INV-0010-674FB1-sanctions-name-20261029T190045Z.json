@@ -1,0 +1,25 @@
+{
+  "status": 200,
+  "headers": {
+    "access-control-allow-origin": "*",
+    "access-control-expose-headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, WWW-Authenticate, Payment-Receipt, X-Cache, X-Credits-Balance, X-Metered-Usd, X-Idempotent-Replay, X-Replayed-Answer, Retry-After, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-Id, Link, X-Total-Count, X-Async-Recommended, Location, Preference-Applied, Sunset",
+    "Cache-Control": "no-store, private",
+    "Content-Type": "application/json; charset=utf-8",
+    "Date": "Thu, 29 Oct 2026 19:00:45 GMT",
+    "etag": "W/\"3d3-QlyyGR5DlQY5tC4EZlc3ggwf7C0\"",
+    "payment-response": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4RGJGZTVjNGQwMjU2RDI0NTliQjIxNmNhQjkwNTk5OUNhNDFiRTM0OSIsInRyYW5zYWN0aW9uIjoiMHhjNDEzMzhkNjA3YTlkY2RlOGJlZjE1N2FjZGIzODIzNTkyNTVhOWU2NGRmOGVkOGY3NmRjYjc1YmUyNTRmOTFhIiwibmV0d29yayI6ImVpcDE1NTo0MjIyMCJ9",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "Server": "railway-hikari",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "vary": "Accept-Encoding",
+    "x-content-type-options": "nosniff",
+    "x-railway-request-id": "FeZIyS0gQxOP8tu4Y53eZw",
+    "x-request-id": "bf69431c-5c2d-40d5-9d39-06c1bc98645d",
+    "Content-Encoding": "gzip",
+    "x-hikari-trace": "sin1.98a6",
+    "x-railway-edge": "sin1",
+    "Transfer-Encoding": "chunked",
+    "Connection": "keep-alive"
+  },
+  "text": "{\"query\":\"Marco\",\"verdict\":\"match\",\"exactCount\":0,\"containsCount\":9,\"allTokensCount\":0,\"matches\":[{\"id\":\"9344\",\"name\":\"DIODATO DEL GALLO, Marco Marino\",\"type\":\"individual\",\"matchType\":\"contains\"},{\"id\":\"10628\",\"name\":\"OLIVAS OJEDA, Marco Antonio\",\"type\":\"individual\",\"matchType\":\"contains\"},{\"id\":\"10899\",\"name\":\"BELTRAN LEYVA, Marcos Arturo\",\"type\":\"individual\",\"matchType\":\"contains\"},{\"id\":\"12314\",\"name\":\"FLOREZ SEPULVEDA, Marco Tulio\",\"type\":\"individual\",\"matchType\":\"contains\"},{\"id\":\"16128\",\"name\":\"DI LAURO, Marco\",\"type\":\"individual\",\"matchType\":\"contains\"}],\"entriesOnList\":19484,\"listsChecked\":[{\"list\":\"OFAC SDN\",\"authority\":\"US Treasury OFAC\",\"url\":\"https://sanctionslist.ofac.treas.gov/\"}],\"listsFetchedAt\":\"2026-10-29T18:32:22.305Z\",\"confirmBeforeActing\":\"a match is a string match against a published list, not a confirmed identification. Names repeat and addresses are reused; confirm the entry against the list itself (the SDN id is given) before acting on it\"}"
+}

@@ -14,7 +14,34 @@ ERC-8021 attribution code `celo_invoiceagent` still tags every transaction we se
 
 <img src="docs/architecture.svg" alt="One sentence becomes a proven payment: a typed judgment, a paid x402 screening leg, a payer's ERC-20 transfer on Celo, and a chain-derived settlement" width="100%">
 
-## Try it — two invoices are open and screened
+## Use the bot
+
+1. Open **[@notcelordbot](https://t.me/notcelordbot)** in Telegram and press **Start**.
+   The command menu is there; `/help` lists every command.
+2. Tell it where you get paid, once:
+   `/wallet 0xYourAddress` — or `/wallet 0xYourAddress wBRL` to be paid in reais in kind.
+3. Send one sentence:
+
+   ```
+   charge Marco 500 BRL for the logo, due Friday
+   ```
+
+It replies with the amount, the currencies it can settle in, and a pay link
+(`/i/INV-0007-2782D9`). Send that link to whoever pays — they need no account and no
+app. The invoice settles by itself when Celo proves the transfer.
+
+| Command | What it does |
+|---|---|
+| `/start`, `/help` | the same guide, and a copy-pasteable example |
+| `/wallet [addr] [asset]` | show or set the payout address and settlement asset |
+| `/new <sentence>` | create an invoice (same as sending the sentence) |
+| `/check <id>` | re-check the chain now instead of waiting for the watcher |
+| `/receipt <id>` | what the agent bought for that invoice, with explorer links |
+| `/held`, `/release <id>`, `/drop <id>` | operator queue for screened invoices |
+
+Anything the bot does not recognise gets a reply pointing at `/help` — never silence.
+
+## Try an invoice without the bot — two are open and screened
 
 Nobody has to sign up, install anything, or talk to me. Press pay:
 
