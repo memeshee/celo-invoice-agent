@@ -189,6 +189,30 @@ def test_watcher_ignores_witness_already_consumed(fixed_rate):
     assert watch.find_settlement(store.get(second["id"]), [_transfer(tx=tx)]) is None
 
 
+def test_watcher_ignores_funds_the_payee_moved_itself(fixed_rate):
+    """A swap or top-up landing in the payout wallet is not a payment.
+
+    INV-0001 was bound to exactly this: a callDiamondWithPermit2 swap initiated
+    by the payout address itself, which satisfied every mechanical filter.
+    """
+    inv = store.create({"amount": "500", "currency": "BRL", "recipient": "Marco"},
+                       {"decision": "settle"}, creator="m", payout_address=PAY_TO,
+                       created_block=90)
+    self_sent = _transfer(value=100_000_000, block=99)
+    self_sent["from"] = PAY_TO                     # same as the payee
+    assert watch.find_settlement(store.get(inv["id"]), [self_sent]) is None
+
+
+def test_watcher_accepts_a_third_party_payment(fixed_rate):
+    inv = store.create({"amount": "500", "currency": "BRL", "recipient": "Marco"},
+                       {"decision": "settle"}, creator="m", payout_address=PAY_TO,
+                       created_block=90)
+    payer = _transfer(value=100_000_000, block=99)
+    payer["from"] = "0x2222222222222222222222222222222222222222"
+    hit = watch.find_settlement(store.get(inv["id"]), [payer])
+    assert hit and hit["tx"] == payer["tx"]
+
+
 def test_sweep_settles_and_notifies(fixed_rate):
     inv = store.create({"amount": "1", "currency": "USD", "recipient": "Marco"},
                        {"decision": "settle"}, creator="m", payout_address=PAY_TO,
@@ -197,6 +221,7 @@ def test_sweep_settles_and_notifies(fixed_rate):
     done = watch.sweep(
         fetcher=lambda addr: [_transfer(block=11)],
         notifier=lambda chat_id, text: sent.append((chat_id, text)) or True,
+        confirm=lambda _c: True,      # chain proof injected; see test_verify.py
         log=lambda *_: None,
     )
     assert [d["id"] for d in done] == [inv["id"]]
@@ -209,7 +234,8 @@ def test_sweep_is_idempotent(fixed_rate):
                        {"decision": "settle"}, creator="a", payout_address=PAY_TO,
                        created_block=10)
     calls = lambda: watch.sweep(fetcher=lambda addr: [_transfer(block=11)],
-                                notifier=lambda *a: True, log=lambda *_: None)
+                                notifier=lambda *a: True, confirm=lambda _c: True,
+                                log=lambda *_: None)
     assert len(calls()) == 1
     assert calls() == []           # second pass must not re-settle
     assert store.get(inv["id"])["settlement_tx"] == "0x" + "aa" * 32
@@ -220,4 +246,17 @@ def test_sweep_survives_a_fetch_failure(fixed_rate):
                  {"decision": "settle"}, creator="a", payout_address=PAY_TO)
     def boom(addr):
         raise RuntimeError("rpc down")
-    assert watch.sweep(fetcher=boom, notifier=lambda *a: True, log=lambda *_: None) == []
+    assert watch.sweep(fetcher=boom, notifier=lambda *a: True, confirm=lambda _c: True,
+                       log=lambda *_: None) == []
+
+
+def test_sweep_refuses_a_witness_the_chain_does_not_back(fixed_rate):
+    """A mechanically perfect match still needs proof of who sent it."""
+    inv = store.create({"amount": "1", "currency": "USD", "recipient": "a"},
+                       {"decision": "settle"}, creator="a", payout_address=PAY_TO,
+                       created_block=10)
+    logged = []
+    done = watch.sweep(fetcher=lambda addr: [_transfer(block=11)],
+                       notifier=lambda *a: True, confirm=lambda _c: False,
+                       log=logged.append)
+    assert done == [] and store.get(inv["id"])["status"] == "open"

@@ -7,7 +7,9 @@ facilitator /settle, Textile /request broadcast, paid agent402 calls.
 """
 
 import os
+import re
 import time
+from pathlib import Path
 
 import pytest
 
@@ -16,12 +18,14 @@ from bot import buy, textile, x402
 web3 = pytest.importorskip("web3")
 
 
+@pytest.mark.network
 def test_facilitator_health_live():
     h = x402.health()
     assert h.get("status") == "ok", h
     assert h.get("network") == "mainnet", h
 
 
+@pytest.mark.network
 def test_supported_lists_usat():
     s = x402.supported_assets()
     blob = str(s)
@@ -46,6 +50,8 @@ def test_payment_request_shape():
     assert req["chain"] == "eip155:42220"
 
 
+@pytest.mark.network
+@pytest.mark.live
 def test_watch_finds_known_settlement():
     # Positive control: 0.1 USAT agent -> invoice wallet, mined block 79408890.
     # Locks the 0x-prefix normalization (empty-window tests can't catch it).
@@ -56,15 +62,18 @@ def test_watch_finds_known_settlement():
     assert "0x0d362780feaa31c632f3ead6b09d55ab9bcc53d5c5c649520d3fa668d6648929" in txs, out
 
 
+@pytest.mark.network
 def test_textile_takerproof_auth():
     # Live control: proof must pass AUTH (never 401). Funds errors are fine —
     # they prove the signature verified and only the balance check fired.
-    import re
     import urllib.error
-    key = re.search(r"AGENT_WALLET_KEY=(\S+)", open(".env").read())
+    key = os.environ.get("AGENT_WALLET_KEY", "").strip()
+    if not key and Path(".env").exists():
+        m = re.search(r"AGENT_WALLET_KEY=(\S+)", Path(".env").read_text())
+        key = m.group(1) if m else ""
     if not key:
-        pytest.skip("no agent key")
-    tp = textile.taker_proof(key.group(1))
+        pytest.skip("AGENT_WALLET_KEY not available — live Textile auth skipped")
+    tp = textile.taker_proof(key)
     assert tp["taker"].startswith("0x") and len(tp["proof"]["signature"]) == 132
     try:
         # Sell above Textile's RFQ minimum (1000000 atomic): below it the API
@@ -81,6 +90,7 @@ def test_textile_takerproof_auth():
         assert "signature" not in low and "unauthorized" not in low, body
 
 
+@pytest.mark.network
 def test_watch_empty_window_shape():
     # Narrow window at chain head: proves RPC + log path works, no funds needed.
     w3 = x402._w3()
@@ -92,11 +102,13 @@ def test_watch_empty_window_shape():
     assert isinstance(out, list)
 
 
+@pytest.mark.network
 def test_textile_preview_shape():
     r = textile.preview("USDC", "USDT", "1000000")
     assert isinstance(r, dict) and "data" in r, r
 
 
+@pytest.mark.network
 def test_agent402_pricing_and_find():
     p = buy.pricing()
     assert "Agent402" in str(p.get("name", ""))

@@ -25,7 +25,7 @@ import urllib.request
 
 from dotenv import load_dotenv
 
-from . import services, store, x402
+from . import services, store, verify, x402
 
 load_dotenv()
 
@@ -81,6 +81,7 @@ def _parse_v2(body: dict) -> list[dict]:
             continue
         out.append({
             "tx": str(it.get("transaction_hash") or "").lower(),
+            "from": str((it.get("from") or {}).get("hash") or "").lower(),
             "to": str((it.get("to") or {}).get("hash") or "").lower(),
             "contract": str((it.get("token") or {}).get("address_hash") or "").lower(),
             "value": int(value),
@@ -100,6 +101,7 @@ def _parse_v1(body: dict) -> list[dict]:
         try:
             out.append({
                 "tx": str(t["hash"]).lower(),
+                "from": str(t.get("from") or "").lower(),
                 "to": str(t["to"]).lower(),
                 "contract": str(t["contractAddress"]).lower(),
                 "value": int(t["value"]),
@@ -146,11 +148,16 @@ def transfers_to(address: str, *, fetcher=None, attempts: int = 3,
     raise RuntimeError("all transfer sources failed — " + ", ".join(errors))
 
 
-def find_settlement(invoice: dict, transfers: list[dict]) -> dict | None:
+def find_settlement(invoice: dict, transfers: list[dict], *, confirm=None) -> dict | None:
     """The transfer that settles this invoice, or None.
 
     Oldest qualifying transfer wins, so a payer who sent twice does not have the
     later one bound to an invoice the first one already paid.
+
+    `confirm` is the real gate: mechanical matching (recipient, asset, amount,
+    block) is necessary but not sufficient — the candidate must also survive
+    bot.verify.payment_proof, which checks the transaction initiator. Without it a
+    swap the payee made itself settles its own invoice.
     """
     pay_to = store.payout_for(invoice)
     if not pay_to:
@@ -169,10 +176,14 @@ def find_settlement(invoice: dict, transfers: list[dict]) -> dict | None:
         and t["value"] >= needed
         and t["block"] >= floor
         and store.tx_used(t["tx"]) is None
+        # Funds arriving from the payee's own wallet are not a payment: our own
+        # swaps and top-ups land here too.
+        and (t.get("from") or "").lower() != pay_to.lower()
     ]
-    if not hits:
-        return None
-    return sorted(hits, key=lambda t: t["block"])[0]
+    for cand in sorted(hits, key=lambda t: t["block"]):
+        if confirm is None or confirm(cand):
+            return cand
+    return None
 
 
 def notify(chat_id: int | None, text: str, *, sender=None) -> bool:
@@ -233,7 +244,16 @@ def enrich_pending(*, log=print, enricher=None, max_per_loop: int | None = None)
     return done
 
 
-def sweep(*, fetcher=None, notifier=None, log=print) -> list[dict]:
+def _confirm(invoice: dict, candidate: dict, *, log=print, web3=None) -> bool:
+    """Mechanical match is not proof — ask bot.verify about the initiator."""
+    proof = verify.payment_proof(invoice, tx=candidate["tx"], web3=web3)
+    if not proof["ok"]:
+        log(f"[watch] rejected witness {candidate['tx'][:18]}… for {invoice['id']}: "
+            f"{proof['reason']}")
+    return bool(proof["ok"])
+
+
+def sweep(*, fetcher=None, notifier=None, confirm=None, log=print) -> list[dict]:
     """One pass over every open invoice. Returns settlements made."""
     settled = []
     open_invs = store.open_invoices()
@@ -250,7 +270,8 @@ def sweep(*, fetcher=None, notifier=None, log=print) -> list[dict]:
             except Exception as e:  # noqa: BLE001
                 log(f"[watch] fetch failed for {pay_to}: {type(e).__name__}: {e}")
                 continue
-        hit = find_settlement(inv, cache[pay_to.lower()])
+        hit = find_settlement(inv, cache[pay_to.lower()],
+                              confirm=confirm or (lambda c, _inv=inv: _confirm(_inv, c, log=log)))
         if not hit:
             continue
         done = store.mark_settled(inv["id"], hit["tx"])

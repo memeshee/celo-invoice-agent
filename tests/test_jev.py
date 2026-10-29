@@ -1,9 +1,24 @@
 """Live Jev tests: sentence -> structured draft, and fraud screen decisions.
 
-Hits api.typesafe.ai (tokens + latency). Run: python -m pytest tests/ -s
+These call api.typesafe.ai, so they need network and TYPESAFE_API_KEY and are
+marked `network` (excluded from a default `pytest` run). Run them with:
+    pytest -m network
+
+The pure parsing helpers they sit on are covered offline in test_regressions.py.
 """
 
+import pytest
+
 from bot import jev
+
+pytestmark = pytest.mark.network
+
+
+@pytest.fixture(autouse=True)
+def _needs_key():
+    """Skip rather than explode when the key is absent (clean sandbox)."""
+    if not jev.has_credentials():
+        pytest.skip("TYPESAFE_API_KEY not set — live Jev call skipped")
 
 
 def test_parse_invoice_sentence():

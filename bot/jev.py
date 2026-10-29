@@ -58,7 +58,22 @@ def _api_key() -> str:
     if key:
         return key
     p = Path.home() / ".config" / "typesafe" / "api_key"
-    return p.read_text().strip()
+    try:
+        return p.read_text().strip()
+    except FileNotFoundError:
+        # Say what is missing. A bare FileNotFoundError from deep inside a test
+        # run reads like a broken build rather than an unconfigured machine.
+        raise RuntimeError(
+            "TYPESAFE_API_KEY is not set and ~/.config/typesafe/api_key does not "
+            "exist — the invoice parser needs a Typesafe key to run"
+        ) from None
+
+
+def has_credentials() -> bool:
+    """Whether a Typesafe key is configured anywhere (env or key file)."""
+    if os.environ.get("TYPESAFE_API_KEY", "").strip():
+        return True
+    return (Path.home() / ".config" / "typesafe" / "api_key").exists()
 
 
 def ask(state, questions: dict, model: str = MODEL) -> dict:

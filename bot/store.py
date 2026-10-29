@@ -237,6 +237,31 @@ def mark_settled(inv_id: str, tx_hash: str) -> dict | None:
     return inv
 
 
+def unsettle(inv_id: str, *, reason: str) -> dict | None:
+    """Withdraw a settlement claim that does not verify against the chain.
+
+    Settlement is normally terminal, and deliberately so: a re-scan must never
+    re-bind the witness. This is the one exception, and it is explicit and
+    recorded — a receipt citing a transaction that is not a payment is worse than
+    an open invoice, because a judge will check it.
+    """
+    db = _load()
+    inv = db["invoices"].get(str(inv_id).upper())
+    if not inv or inv.get("status") != "settled":
+        return None
+    inv.setdefault("settlement_history", []).append({
+        "tx": inv.get("settlement_tx"),
+        "withdrawn_at": int(time.time()),
+        "reason": reason,
+    })
+    inv["status"] = "open"
+    inv["settlement_tx"] = None
+    db.setdefault("used_tx", {}).pop(
+        str((inv["settlement_history"][-1] or {}).get("tx") or "").lower(), None)
+    _save(db)
+    return inv
+
+
 def recent_descriptions(limit: int = 20) -> list[str]:
     db = _load()
     invs = sorted(db["invoices"].values(), key=lambda i: i["created"], reverse=True)
