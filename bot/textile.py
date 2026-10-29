@@ -68,8 +68,8 @@ def taker_proof(owner_key: str) -> dict:
         from eth_account.messages import encode_typed_data
     except ImportError as e:
         raise RuntimeError("pip install eth-account for signing") from e
-    import time
     import os
+    import time
     acct = Account.from_key(owner_key)
     full = {
         "types": {

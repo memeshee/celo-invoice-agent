@@ -23,7 +23,13 @@ import os
 
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    MessageHandler,
+    filters,
+)
 
 from . import jev, store
 
@@ -389,9 +395,18 @@ def operator_ids() -> set[str]:
 
 
 def _is_operator(update: Update) -> bool:
+    """Fail closed: an unset operator list means nobody can release anything.
+
+    Falls back to the message author because some update shapes (and every test
+    harness) carry the user on the message rather than on the update.
+    """
     ops = operator_ids()
-    user = update.effective_user
-    return bool(ops) and user is not None and str(user.id) in ops
+    if not ops:
+        return False
+    user = getattr(update, "effective_user", None)
+    if user is None:
+        user = getattr(getattr(update, "message", None), "from_user", None)
+    return user is not None and str(getattr(user, "id", "")) in ops
 
 
 async def ping_operator(ctx, inv: dict, reasons: list[str]) -> None:

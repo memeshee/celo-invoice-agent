@@ -1,0 +1,113 @@
+"""The HTTP surface, driven over a real socket.
+
+Route wiring, status codes and security headers are exactly the things that look
+fine in a unit test of a render function and break the moment a judge loads the
+page, so these start the actual server on an ephemeral port.
+"""
+
+import json
+import threading
+import urllib.error
+import urllib.request
+
+import pytest
+
+from bot import serve, store
+
+PAY_TO = "0x86E95581E41946ED84956433a8a9c836bCbA636c"
+
+
+@pytest.fixture()
+def base_url(tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "STORE_PATH", str(tmp_path / "invoices.json"))
+    monkeypatch.setenv("INVOICE_WALLET", PAY_TO)
+    monkeypatch.setattr(serve, "services_verify",
+                        lambda: (lambda inv: {"ok": True, "from": "0x" + "22" * 20,
+                                              "pay_to": PAY_TO, "reason": "verified"}))
+    serve._PROOF_CACHE.update(at=0.0, data=None)
+    server = serve.make_server(host="127.0.0.1", port=0)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.shutdown()
+        server.server_close()
+        serve._PROOF_CACHE.update(at=0.0, data=None)
+
+
+def get(url, method="GET"):
+    req = urllib.request.Request(url, method=method,
+                                 headers={"User-Agent": "test/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return r.status, dict(r.headers), r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, dict(e.headers), e.read().decode()
+
+
+def _invoice(**kw):
+    return store.create({"amount": "10", "currency": "USD", "recipient": "Ana"},
+                        {"decision": "settle"}, creator="ana", payout_address=PAY_TO, **kw)
+
+
+def test_health(base_url):
+    code, headers, body = get(base_url + "/health")
+    assert code == 200 and json.loads(body)["ok"] is True
+
+
+def test_security_headers_are_on_every_response(base_url):
+    for path in ("/health", "/", "/proof", "/api/proof"):
+        _, headers, _ = get(base_url + path)
+        assert "Content-Security-Policy" in headers, path
+        assert headers.get("X-Content-Type-Options") == "nosniff", path
+
+
+def test_index_and_proof_pages_render(base_url):
+    code, _, body = get(base_url + "/")
+    assert code == 200 and "Celo Invoice Agent" in body
+    code, _, body = get(base_url + "/proof")
+    assert code == 200 and "Onchain proof" in body
+
+
+def test_proof_api_shape(base_url):
+    code, headers, body = get(base_url + "/api/proof")
+    assert code == 200 and headers["Content-Type"].startswith("application/json")
+    data = json.loads(body)
+    assert set(data["counts"]) >= {"settled", "verified", "independent", "purchases"}
+
+
+def test_invoice_page_and_api_for_a_real_invoice(base_url):
+    inv = _invoice()
+    code, headers, body = get(f"{base_url}/i/{inv['id']}")
+    assert code == 200 and inv["id"] in body
+    assert "celo://wallet/pay" in body
+    code, _, body = get(f"{base_url}/api/invoice/{inv['id']}")
+    data = json.loads(body)
+    assert code == 200 and data["status"] == "open" and data["amount_atomic"] == 10_000_000
+
+
+def test_unknown_invoice_is_a_404_not_a_stack_trace(base_url):
+    code, _, body = get(base_url + "/i/INV-9999-NOPE")
+    assert code == 404 and "<!doctype html>" in body.lower()
+    code, _, body = get(base_url + "/api/invoice/INV-9999-NOPE")
+    assert code == 404 and json.loads(body)["error"] == "unknown invoice"
+
+
+def test_unknown_route_returns_json_404(base_url):
+    code, _, body = get(base_url + "/definitely/not/a/route")
+    assert code == 404 and json.loads(body)["error"] == "not found"
+
+
+def test_head_requests_do_not_send_a_body(base_url):
+    code, headers, body = get(base_url + "/health", method="HEAD")
+    assert code == 200 and body == ""
+    assert int(headers["Content-Length"]) > 0
+
+
+def test_settled_invoice_page_shows_the_explorer_link(base_url):
+    inv = _invoice()
+    store.mark_settled(inv["id"], "0x" + "cd" * 32)
+    code, _, body = get(f"{base_url}/i/{inv['id']}")
+    assert code == 200 and "blockscout.com/tx/0xcdcd" in body

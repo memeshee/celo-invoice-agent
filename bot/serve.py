@@ -499,7 +499,10 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def make_server(host: str = "0.0.0.0", port: int | None = None) -> ThreadingHTTPServer:
-    return ThreadingHTTPServer((host, port or int(os.environ.get("PUBLIC_PORT", "8088"))), Handler)
+    # port=0 must mean "any free port" (it is how tests start this on an ephemeral
+    # port); treating it as unset silently bound the production port instead.
+    chosen = port if port is not None else int(os.environ.get("PUBLIC_PORT", "8088"))
+    return ThreadingHTTPServer((host, chosen), Handler)
 
 
 def main() -> None:

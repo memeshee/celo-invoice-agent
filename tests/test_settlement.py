@@ -41,7 +41,8 @@ def test_atomic_math():
 def test_payment_request_shape():
     # 500 BRL is NOT 500 USA₮ — pre-FX this priced a ~5.4x overcharge, so the
     # rate is pinned here and the conversion is what gets asserted.
-    provider = lambda: {"rates": {"BRL": 5.0}, "as_of": "t", "fetched": 0, "source": "t"}
+    def provider():
+        return {"rates": {"BRL": 5.0}, "as_of": "t", "fetched": 0, "source": "t"}
     req = x402.create_payment_request(
         {"id": "INV-0001", "amount": "500", "currency": "BRL"},
         pay_to="0x000000000000000000000000000000000000dEaD", fx_provider=provider)
@@ -117,7 +118,7 @@ def test_agent402_pricing_and_find():
 
 
 def test_eip3009_signature_offline():
-    eth_account = pytest.importorskip("eth_account")
+    pytest.importorskip("eth_account")
     from eth_account import Account
     key = "0x" + "7" * 64
     nonce = os.urandom(32)

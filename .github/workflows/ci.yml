@@ -19,11 +19,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Lint (ruff)
+        run: ruff check .
+
       - name: Byte-compile every module and script
         run: python -m compileall -q bot scripts tests
 
       # The default suite must pass with no .env, no API keys and no network:
       # that is what a judge (or any sandbox) will actually run. Network and
       # mainnet tests are marked, and pytest.ini excludes them by default.
-      - name: Tests (offline, no secrets)
-        run: python -m pytest -q
+      # The coverage floor exists to stop it sliding back, not to chase a number.
+      - name: Tests (offline, no secrets) with coverage floor
+        run: python -m pytest -q --cov=bot --cov-report=term-missing --cov-fail-under=75
+
+      # Reproduces the onchain claims from Celo. Needs the network and a .env, so
+      # it is advisory here and blocking when run by hand.
+      - name: Settlement claims still verify (advisory, needs mainnet)
+        continue-on-error: true
+        run: python scripts/verify_settlements.py

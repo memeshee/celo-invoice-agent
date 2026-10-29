@@ -30,7 +30,6 @@ import base64
 import json
 import os
 import time
-import urllib.parse
 from pathlib import Path
 
 from . import buy, chain

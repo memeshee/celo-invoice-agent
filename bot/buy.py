@@ -208,7 +208,6 @@ def _agent_key(explicit: str | None = None) -> str:
         return explicit
     import os
     import re
-    from pathlib import Path
     key = os.environ.get("AGENT_WALLET_KEY", "").strip()
     if key:
         return key
@@ -311,7 +310,6 @@ def pay_and_call(url: str, params: dict | None = None,
     Raises RuntimeError("NO_USDC") when the wallet can't cover the ask —
     fund it with a little USDC on Celo and retry.
     """
-    import requests
     s = paid_session(owner_key, budget_url=url)
     try:
         r = s.get(url, params=params or {}, timeout=90)

@@ -171,9 +171,12 @@ def _invoice(**kw):
 
 def test_enrichment_blocks_the_invoice_on_a_sanctions_hit():
     inv = _invoice()
-    sessions = {"sanctions-name": FakeSession(FakeResponse(flagged_name_body())),
-                "sanctions-wallet": FakeSession(FakeResponse({"verdict": "no_match_on_lists_checked", "exactCount": 0})),
-                "fx-rate": FakeSession(FakeResponse({"rate": 5.3}))}
+    clean = {"verdict": "no_match_on_lists_checked", "exactCount": 0}
+    sessions = {
+        "sanctions-name": FakeSession(FakeResponse(flagged_name_body())),
+        "sanctions-wallet": FakeSession(FakeResponse(clean)),
+        "fx-rate": FakeSession(FakeResponse({"rate": 5.3})),
+    }
     enr = services.enrich(inv, session_factory=lambda slug: sessions[slug], log=lambda *_: None)
     assert enr["blocked"] is True and "sanctions-name" in enr["reason"]
     updated = store.set_services(inv["id"], "done", enr)
@@ -193,8 +196,7 @@ def test_enrichment_records_spend_and_stays_open_when_clean():
 
 
 def test_enrich_pending_is_capped_and_notifies():
-    a, b = _invoice(), _invoice()
-    sent = []
+    _a, _b = _invoice(), _invoice()
     clean = FakeResponse({"verdict": "no_match_on_lists_checked", "exactCount": 0})
     done = watch.enrich_pending(
         enricher=lambda inv: services.enrich(inv, session_factory=lambda s: FakeSession(clean),

@@ -104,7 +104,15 @@ def main() -> int:
     if dry:
         # `to` is not optional here: without it the RPC simulates a contract
         # CREATION and the selector-bearing calldata dies StackUnderflow.
-        print(f"gas estimate: {w3.eth.estimate_gas({'from': acct.address, 'to': Web3.to_checksum_address(IDENTITY_REGISTRY), 'data': calldata, 'value': 0})}")
+        # Always pass `to`: estimating with calldata but no `to` simulates a
+        # contract CREATION and dies StackUnderflow, blaming the calldata.
+        estimate = w3.eth.estimate_gas({
+            "from": acct.address,
+            "to": Web3.to_checksum_address(IDENTITY_REGISTRY),
+            "data": calldata,
+            "value": 0,
+        })
+        print(f"gas estimate: {estimate}")
         print(json.dumps(METADATA, indent=2)[:600])
         return 0
 

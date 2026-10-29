@@ -1,0 +1,16 @@
+# Lint configuration. Deliberately narrow: rules that catch real defects, not a
+# style opinion. `E501` is on, with a width that matches how the code is written
+# (long f-string messages read better unwrapped than chopped).
+line-length = 120
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = [
+    # B008: function-call-in-default-argument. The x402/web3 APIs take callables
+    # as defaults in a few places and it is intentional.
+    "B008",
+]
+
+[lint.isort]
+known-first-party = ["bot"]

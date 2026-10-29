@@ -107,7 +107,8 @@ def parse_invoice(text: str) -> dict:
         },
         "pick_amount": {
             "type": "choice",
-            "instructions": "Which candidate in `amounts` is the invoiced total in `msg.text`? Return the exact candidate string.",
+            "instructions": ("Which candidate in `amounts` is the invoiced total in "
+                             "`msg.text`? Return the exact candidate string."),
             "criteria": {a: f"Candidate invoiced total: {a}" for a in amounts},
         },
         "has_recipient": {
@@ -118,13 +119,15 @@ def parse_invoice(text: str) -> dict:
     if currencies:
         questions["pick_currency"] = {
             "type": "choice",
-            "instructions": "Which candidate in `currencies` is the invoice currency in `msg.text`? Return the exact candidate string.",
+            "instructions": ("Which candidate in `currencies` is the invoice currency "
+                             "in `msg.text`? Return the exact candidate string."),
             "criteria": {c: f"Candidate invoice currency: {c}" for c in currencies},
         }
     if names:
         questions["pick_recipient"] = {
             "type": "choice",
-            "instructions": "Which candidate in `names` is the invoice recipient/payer in `msg.text`? Return the exact candidate string.",
+            "instructions": ("Which candidate in `names` is the invoice recipient/payer "
+                             "in `msg.text`? Return the exact candidate string."),
             "criteria": {n: f"Candidate recipient name: {n}" for n in names},
         }
 
@@ -214,7 +217,8 @@ def screen_invoice(invoice: dict, recent_descriptions: list[str] | None = None) 
     answers = ask(state, {
         "is_suspicious": {
             "type": "noul",
-            "instructions": "Is `invoice` suspicious: round-amount testing, mismatched currency/recipient, pressure language, or signs of fraud?",
+            "instructions": ("Is `invoice` suspicious: round-amount testing, mismatched "
+                             "currency/recipient, pressure language, or signs of fraud?"),
         },
         "is_duplicate": {
             "type": "noul",

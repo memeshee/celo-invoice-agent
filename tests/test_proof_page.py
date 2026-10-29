@@ -33,7 +33,7 @@ def _settled(amount="10", currency="USD", tx="0x" + "aa" * 32):
 
 def test_counts_only_what_the_chain_backs():
     good = _settled(tx="0x" + "aa" * 32)
-    bad = _settled(tx="0x" + "bb" * 32)
+    _settled(tx="0x" + "bb" * 32)
 
     def verifier(inv):
         ok = inv["id"] == good["id"]

@@ -6,7 +6,6 @@ the wrong unit, a wrong-recipient transfer, or an unescaped recipient name are
 all silent failures in production.
 """
 
-import json
 
 import pytest
 
@@ -52,7 +51,8 @@ def test_fx_unknown_currency_fails_closed():
 
 
 def test_fx_converts_with_injected_rate():
-    provider = lambda: {"rates": {"BRL": 5.0}, "as_of": "now", "fetched": 0, "source": "t"}
+    def provider():
+        return {"rates": {"BRL": 5.0}, "as_of": "now", "fetched": 0, "source": "t"}
     q = fx.to_usat("500", "BRL", provider=provider)
     assert q["atomic"] == 100_000_000          # 500 BRL == 100 USAT
     assert q["display"] == "100.000000"
@@ -60,7 +60,8 @@ def test_fx_converts_with_injected_rate():
 
 
 def test_fx_refuses_zero_amount():
-    provider = lambda: {"rates": {"BRL": 5.0}, "as_of": "now", "fetched": 0, "source": "t"}
+    def provider():
+        return {"rates": {"BRL": 5.0}, "as_of": "now", "fetched": 0, "source": "t"}
     with pytest.raises(ValueError):
         fx.to_usat("0", "BRL", provider=provider)
 
@@ -233,9 +234,10 @@ def test_sweep_is_idempotent(fixed_rate):
     inv = store.create({"amount": "1", "currency": "USD", "recipient": "a"},
                        {"decision": "settle"}, creator="a", payout_address=PAY_TO,
                        created_block=10)
-    calls = lambda: watch.sweep(fetcher=lambda addr: [_transfer(block=11)],
-                                notifier=lambda *a: True, confirm=lambda _c: True,
-                                log=lambda *_: None)
+    def calls():
+        return watch.sweep(fetcher=lambda addr: [_transfer(block=11)],
+                                    notifier=lambda *a: True, confirm=lambda _c: True,
+                                    log=lambda *_: None)
     assert len(calls()) == 1
     assert calls() == []           # second pass must not re-settle
     assert store.get(inv["id"])["settlement_tx"] == "0x" + "aa" * 32

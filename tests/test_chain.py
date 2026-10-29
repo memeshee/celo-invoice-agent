@@ -4,7 +4,6 @@ An untagged transfer is permanently unattributable, so this is asserted at the
 build step rather than trusting every call site to remember.
 """
 
-import pytest
 from eth_account import Account
 
 from bot import attribution, chain
