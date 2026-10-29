@@ -30,7 +30,7 @@
 
 This is a hackathon project on Celo mainnet with no user funds custodied. If you
 find a problem, open an issue at
-https://github.com/memeshee/celo-invoice-agent/issues — or, if it involves keys,
+https://github.com/memeshee/impay/issues — or, if it involves keys,
 contact the maintainer directly rather than filing publicly.
 
 ## Known limits

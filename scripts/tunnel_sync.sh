@@ -47,7 +47,7 @@ while true; do
     # host, so a rotation republishes the proxy instead of invalidating links.
     sed -i "s|^ORIGIN_BASE_URL=.*|ORIGIN_BASE_URL=$URL|" "$ENVFILE"
     log "origin -> $URL (synced into .env)"
-    systemctl --user restart celo-invoice-serve.service celo-invoice-bot.service || true
+    systemctl --user restart impay-serve.service impay-bot.service || true
     sleep 5
     bash "$REPO/scripts/publish_site.sh" >> "$REPO/tunnel.log" 2>&1 \
       && log "site republished, proxy follows the new origin" \

@@ -66,7 +66,7 @@ def test_security_headers_are_on_every_response(base_url):
 
 def test_index_and_proof_pages_render(base_url):
     code, _, body = get(base_url + "/")
-    assert code == 200 and "Celo Invoice Agent" in body
+    assert code == 200 and "impay" in body
     code, _, body = get(base_url + "/proof")
     assert code == 200 and "Onchain proof" in body
 

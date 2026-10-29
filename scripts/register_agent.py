@@ -16,11 +16,14 @@ from __future__ import annotations
 import base64
 import json
 import os
+import pathlib
 import sys
 
 from dotenv import dotenv_values
 from eth_account import Account
 from web3 import Web3
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from bot import attribution  # noqa: E402 — needs the repo root on sys.path
@@ -41,7 +44,7 @@ _LOGO_SVG = (
 
 METADATA = {
     "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-    "name": "Celo Invoice Agent",
+    "name": "impay",
     "description": (
         "Turns one sentence ('charge Marco 500 BRL for the logo, due Friday') into a "
         "settled stablecoin payment on Celo. Typed LLM judgments parse the amount and "
@@ -67,9 +70,9 @@ def agent_uri() -> str:
 
 def main() -> int:
     dry = "--dry-run" in sys.argv
-    env = dotenv_values("/home/kiter/celo-invoice-agent/.env")
+    env = dotenv_values(str(ROOT / ".env"))
     acct = Account.from_key(env["AGENT_WALLET_KEY"])
-    w3 = Web3(Web3.HTTPProvider(RPC, request_kwargs={"headers": {"User-Agent": "celo-invoice-agent/1.0"}}))
+    w3 = Web3(Web3.HTTPProvider(RPC, request_kwargs={"headers": {"User-Agent": "impay/1.0"}}))
 
     uri = agent_uri()
     c = w3.eth.contract(address=Web3.to_checksum_address(IDENTITY_REGISTRY),

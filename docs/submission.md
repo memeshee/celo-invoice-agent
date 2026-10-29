@@ -4,11 +4,12 @@ Paste-ready. Every claim here is checkable from a link in this file.
 
 ## Title
 
-**Celo Invoice Agent — one sentence in, a proven payment out**
+**impay — one sentence in, a proven payment out**
 
 ## One-liner
 
-A freelancer types `charge Marco 500 BRL for the logo` in Telegram; an ERC-8004 agent
+**impay** is an invoice agent for freelancers who get paid across borders. A freelancer types
+`charge Marco 500 BRL for the logo` in Telegram; the ERC-8004 agent
 prices it, buys its own sanctions screening over x402, mints a pay page anyone can
 open, and marks the invoice paid **from Celo rather than from a claim**.
 

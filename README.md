@@ -1,4 +1,4 @@
-# Celo Invoice Agent
+# impay
 
 A freelancer types one sentence. The agent prices it, screens it, mints a pay page
 anyone can open, watches Celo for the money, and marks the invoice paid **from the
@@ -6,7 +6,11 @@ chain rather than from a claim**.
 
 Built for the Celo *Agents on Open Rails* hackathon. Celo mainnet only.
 
-[![ci](https://github.com/memeshee/celo-invoice-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/memeshee/celo-invoice-agent/actions/workflows/ci.yml)
+<sub>Renamed from `celo-invoice-agent`; the old GitHub URL redirects, and the
+ERC-8021 attribution code `celo_invoiceagent` still tags every transaction we send
+(it is baked into history and cannot be rewritten).</sub>
+
+[![ci](https://github.com/memeshee/impay/actions/workflows/ci.yml/badge.svg)](https://github.com/memeshee/impay/actions/workflows/ci.yml)
 
 <img src="docs/architecture.svg" alt="One sentence becomes a proven payment: a typed judgment, a paid x402 screening leg, a payer's ERC-20 transfer on Celo, and a chain-derived settlement" width="100%">
 
@@ -23,7 +27,7 @@ chain, no confirm button, nobody to tell.
 | | |
 |---|---|
 | **Bot** | [@notcelordbot](https://t.me/notcelordbot) — `/wallet`, one sentence, done |
-| **Onchain proof** | [celo-invoice-agent.vercel.app/proof](https://celo.uconfidant.tech/proof) — re-derives every claim from Celo (cached 60s) |
+| **Onchain proof** | [celo.uconfidant.tech/proof](https://celo.uconfidant.tech/proof) — re-derives every claim from Celo (cached 60s) |
 | **Agent card** | ERC-8004 `agentId 10005` on Celo · [`/agent.json`](https://celo.uconfidant.tech/agent.json) · [8004scan](https://8004scan.io/agents/celo/10005) |
 | **Judging map** | [docs/judging.md](docs/judging.md) — each criterion → the code that satisfies it |
 
@@ -72,7 +76,7 @@ settlements, and a daily CI workflow runs it so none of this can quietly rot.
 | What | Transaction |
 |---|---|
 | ERC-8004 identity registered (`agentId 10005`) | [`0x9c101fb0…2b70`](https://celoscan.io/tx/0x9c101fb0dcbfeba0d95c0172b22c996bec949a4d908b4daeaf486c0cd12b2b70) |
-| Agent card declares its live endpoint — then corrected three times: it had claimed invoices settle *over the x402 facilitator*, it advertised `x402Support: true` though we only *pay* over x402, and it pointed at a rotating host | [`0xa9416d84…`](https://celoscan.io/tx/0xa9416d841b049e3546bab955cff3388ef2b160b9f468f28342da557bea9b1e64) · [`0xdcd801a4…`](https://celoscan.io/tx/0xdcd801a45f54957a016047b8cd9fe7e1470dc4a9113804b14a97bd5e01eadec1) · [`0xdb1a214f…`](https://celoscan.io/tx/0xdb1a214f29df4452a38fea0d45c1df2babbaba2c57633a4c550faf3b459584a1) · [`0x0374549a…`](https://celoscan.io/tx/0x0374549a1719384ef622cd5529435648e99e45f9aad3f18d59d61d1808d44b67) |
+| Agent card written and then corrected five times — `services[]` added once the endpoint really answered, the false "settles over the x402 facilitator" claim removed, `x402Support` set to false, the endpoint moved to the stable domain, and finally renamed to `impay` | [`0xa9416d84…`](https://celoscan.io/tx/0xa9416d841b049e3546bab955cff3388ef2b160b9f468f28342da557bea9b1e64) · [`0xdcd801a4…`](https://celoscan.io/tx/0xdcd801a45f54957a016047b8cd9fe7e1470dc4a9113804b14a97bd5e01eadec1) · [`0xdb1a214f…`](https://celoscan.io/tx/0xdb1a214f29df4452a38fea0d45c1df2babbaba2c57633a4c550faf3b459584a1) · [`0x0374549a…`](https://celoscan.io/tx/0x0374549a1719384ef622cd5529435648e99e45f9aad3f18d59d61d1808d44b67) · [`0xabb2c715…`](https://celoscan.io/tx/0xabb2c7153682fa0ea363305d5897ae2da48ca403b08252fd931dc16e16fbc14c) · [`0xef58a6db…`](https://celoscan.io/tx/0xef58a6dbb831785e36c5d08cc6112f5ab0513438f42b7a6612c9f512e497e97f) |
 | Invoice paid 0.1 USA₮ → settled autonomously, no human | [`0x0d362780…8929`](https://celoscan.io/tx/0x0d362780feaa31c632f3ead6b09d55ab9bcc53d5c5c649520d3fa668d6648929) |
 | Invoice paid 0.02 USA₮ → settled autonomously | [`0x8a19fcc4…c724c4`](https://celoscan.io/tx/0x8a19fcc4139524502b52cc25748b9a40bee64384d09986b8f809690b77c724c4) |
 | **Withdrawn claim:** 0.998543 USA₮ arrived via a Squid bridge for a 0.1 USD invoice; the verifier now refuses it as an amount mismatch | [`0xe5796183…1073ee`](https://celoscan.io/tx/0xe5796183431382dd8e2e543b11140497420c8bb09cc35f5a24a52e76d731073e) |

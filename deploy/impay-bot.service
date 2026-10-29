@@ -1,6 +1,6 @@
 [Unit]
-Description=Celo Invoice Agent — Telegram bot (Agents on Open Rails)
-Documentation=https://github.com/memeshee/celo-invoice-agent
+Description=impay — Telegram bot (Agents on Open Rails)
+Documentation=https://github.com/memeshee/impay
 After=network-online.target
 Wants=network-online.target
 
@@ -9,16 +9,16 @@ Type=simple
 # load_dotenv() resolves .env relative to the module path, but the JSON store and
 # spend ledger resolve relative to the CWD — pin the working directory or the
 # invoice store silently starts empty.
-WorkingDirectory=<REPO>
+WorkingDirectory=/home/kiter/impay
 Environment=PYTHONUNBUFFERED=1
-ExecStart=<REPO>/.venv/bin/python -m bot.main
+ExecStart=/home/kiter/impay/.venv/bin/python -m bot.main
 Restart=always
 RestartSec=5
 # A judge poking the bot must never find it dead: restart on any exit, and cap
 # the backoff so a transient Telegram 409 does not park it for minutes.
 StartLimitIntervalSec=0
-StandardOutput=append:<REPO>/bot.log
-StandardError=append:<REPO>/bot.log
+StandardOutput=append:/home/kiter/impay/bot.log
+StandardError=append:/home/kiter/impay/bot.log
 
 [Install]
 WantedBy=default.target

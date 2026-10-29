@@ -35,7 +35,7 @@ load_dotenv()  # the units run from the repo dir; .env is the single config sour
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1:8088").rstrip("/")
 AGENT_ID = os.environ.get("ERC8004_AGENT_ID", "10005")
 IDENTITY_REGISTRY = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
-REPO = "https://github.com/memeshee/celo-invoice-agent"
+REPO = "https://github.com/memeshee/impay"
 EXPLORER_TX = "https://celo.blockscout.com/tx/"
 
 INVOICE_PATH = re.compile(r"^/i/([A-Za-z0-9-]{4,64})$")
@@ -184,7 +184,7 @@ def agent_card() -> dict:
     """
     return {
         "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-        "name": "Celo Invoice Agent",
+        "name": "impay",
         "description": ("Turns one sentence into a settled stablecoin payment on Celo. "
                         "Prices invoices, buys its own sanctions screening over x402, "
                         "and proves settlement from the chain."),
@@ -229,7 +229,7 @@ def render_proof(data: dict) -> str:
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Onchain proof · Celo Invoice Agent</title><style>{PAGE_CSS}
+<title>Onchain proof · impay</title><style>{PAGE_CSS}
 .tag{{display:inline-block;margin-top:4px;font-size:11px;color:#94a3b8}}
 </style></head>
 <body><main class="card">
@@ -525,7 +525,7 @@ def render_index(stats: dict | None = None) -> str:
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Celo Invoice Agent — get paid in your own currency</title>
+<title>impay — get paid in your own currency</title>
 <style>{PAGE_CSS}
   .steps{{margin:18px 0 0;padding:0;list-style:none;counter-reset:s}}
   .steps li{{position:relative;padding:10px 0 10px 34px;font-size:14px;color:#cbd5e1;
@@ -536,7 +536,7 @@ def render_index(stats: dict | None = None) -> str:
   .live{{font-size:12px;color:#6ee7b7;margin-top:10px}}
 </style></head>
 <body><main class="card">
-  <p class="kicker">Celo Invoice Agent · ERC-8004 #{AGENT_ID}</p>
+  <p class="kicker">impay · ERC-8004 #{AGENT_ID}</p>
   <h1 class="amount">Get paid in<br>your own currency</h1>
   <p class="settle">Send one sentence to the bot. It prices the invoice, screens the
   counterparty, mints a pay link, and settles in stablecoins on Celo — proven from
@@ -600,7 +600,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = self.path.split("?")[0]
         if path == "/health":
-            self._json(200, {"ok": True, "service": "celo-invoice-agent", "agent_id": AGENT_ID})
+            self._json(200, {"ok": True, "service": "impay", "agent_id": AGENT_ID})
             return
         if path == "/proof":
             try:

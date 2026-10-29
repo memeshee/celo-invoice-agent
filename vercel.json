@@ -2,23 +2,23 @@
   "rewrites": [
     {
       "source": "/i/:path*",
-      "destination": "https://newsletter-effect-backgrounds-attribute.trycloudflare.com/i/:path*"
+      "destination": "https://here-expenses-mason-beam.trycloudflare.com/i/:path*"
     },
     {
       "source": "/proof",
-      "destination": "https://newsletter-effect-backgrounds-attribute.trycloudflare.com/proof"
+      "destination": "https://here-expenses-mason-beam.trycloudflare.com/proof"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://newsletter-effect-backgrounds-attribute.trycloudflare.com/api/:path*"
+      "destination": "https://here-expenses-mason-beam.trycloudflare.com/api/:path*"
     },
     {
       "source": "/agent.json",
-      "destination": "https://newsletter-effect-backgrounds-attribute.trycloudflare.com/agent.json"
+      "destination": "https://here-expenses-mason-beam.trycloudflare.com/agent.json"
     },
     {
       "source": "/health",
-      "destination": "https://newsletter-effect-backgrounds-attribute.trycloudflare.com/health"
+      "destination": "https://here-expenses-mason-beam.trycloudflare.com/health"
     }
   ],
   "cleanUrls": true,

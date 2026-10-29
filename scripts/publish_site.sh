@@ -32,13 +32,16 @@ PY="$REPO/.venv/bin/python"
 # cached build cannot serve a stale proxy target, and --yes so it never prompts (this
 # runs from a systemd unit).
 cd "$REPO"
-PROJECT=celo-invoice-agent
+PROJECT=impay
 vercel link --project "$PROJECT" --yes >/dev/null 2>&1 || true
 OUT=$(vercel deploy --prod --force --yes 2>&1)
 echo "$OUT" | grep -E '"url"|readyState' | head -3
-# The per-deployment URL changes every time; the project alias is what we publish.
-URL="https://$PROJECT.vercel.app"
 printf '%s\n' "$OUT" | grep -qE 'READY|ready' || { echo "deploy did not report ready" >&2; exit 1; }
+# Publish the custom domain, and NEVER assume "$PROJECT.vercel.app" is ours:
+# celo.uconfidant.tech belongs to another team and returns 200 for their site, so a
+# status-only check would happily pass on a stranger's page.
+URL="${PUBLIC_URL:-https://celo.uconfidant.tech}"
+FINGERPRINT="${FINGERPRINT:-impay}"
 echo "$URL" > "$REPO/.site_url"
 echo "deployed: $URL  (proxy -> $ORIGIN)"
 
@@ -47,7 +50,7 @@ echo "deployed: $URL  (proxy -> $ORIGIN)"
 TOK=$("$PY" -c "import json;print(json.load(open('$HOME/.local/share/com.vercel.cli/auth.json'))['token'])")
 TEAM=$(curl -s -H "Authorization: Bearer $TOK" https://api.vercel.com/v2/user \
   | "$PY" -c "import sys,json;print((json.load(sys.stdin).get('user') or {}).get('defaultTeamId') or '')")
-SLUG=celo-invoice-agent
+SLUG=impay
 PID=$(curl -s -H "Authorization: Bearer $TOK" \
   "https://api.vercel.com/v9/projects/$SLUG${TEAM:+?teamId=$TEAM}" \
   | "$PY" -c "import sys,json;print(json.load(sys.stdin).get('id') or '')")
@@ -59,7 +62,14 @@ else
   echo "warning: could not resolve project id for $SLUG (auth wall may remain)" >&2
 fi
 
+ok=0
 for path in / /proof /agent.json; do
+  body=$(curl -s --max-time 25 "$URL$path" || true)
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 25 "$URL$path" || echo 000)
-  printf '  %-12s %s\n' "$path" "$code"
+  if [ "$code" = "200" ] && printf '%s' "$body" | grep -qi "$FINGERPRINT"; then
+    printf '  %-12s %s (fingerprint ok)\n' "$path" "$code"; ok=$((ok+1))
+  else
+    printf '  %-12s %s (FINGERPRINT MISSING — not our page?)\n' "$path" "$code"
+  fi
 done
+[ "$ok" -eq 3 ] || { echo "verification failed on $((3-ok))/3 paths at $URL" >&2; exit 1; }

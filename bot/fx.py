@@ -36,7 +36,7 @@ USAT_DECIMALS = 6
 
 
 def _fetch() -> dict:
-    req = urllib.request.Request(SOURCE, headers={"User-Agent": "celo-invoice-agent/1.0"})
+    req = urllib.request.Request(SOURCE, headers={"User-Agent": "impay/1.0"})
     with urllib.request.urlopen(req, timeout=20) as r:
         body = json.load(r)
     if not body.get("rates"):

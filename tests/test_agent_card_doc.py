@@ -15,7 +15,7 @@ MIRROR = ROOT / "docs" / "agent" / "erc8004-card.md"
 
 CARD_JSON = {
     "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-    "name": "Celo Invoice Agent",
+    "name": "impay",
     "description": "Turns one sentence into a settled stablecoin payment on Celo.",
     "active": True,
     "x402Support": False,

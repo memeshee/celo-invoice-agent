@@ -57,13 +57,14 @@ def desired(meta: dict) -> dict:
     # facilitator". They do not: a payer sends a plain ERC-20 transfer and we prove
     # it from the chain. x402 is what the agent spends, not what it receives — and
     # the card is the first thing an ERC-8004-aware judge reads.
-    out["description"] = (
-        "Turns one sentence ('charge Marco 500 BRL for the logo, due Friday') into a "
-        "settled stablecoin payment on Celo. Invoices settle as plain ERC-20 "
-        "transfers to the freelancer's wallet and are proven from the chain, never "
-        "from a claim; the agent buys its per-invoice sanctions screening and FX "
-        "cross-check over x402, and a sanctions hit blocks settlement."
-    )
+    # Name and description come from bot/serve.py::agent_card — the same function
+    # that serves /agent.json — instead of a second copy here. The copy is how the
+    # on-chain card kept saying "Celo Invoice Agent" after the project was renamed:
+    # desired() started from dict(meta), so `name` was only ever echoed back.
+    from bot import serve as serve_mod
+    card = serve_mod.agent_card()
+    out["name"] = card["name"]
+    out["description"] = card["description"]
     out["services"] = [
         # The invoice pages and the /proof page are real, public, and answer 200.
         {"name": "web", "endpoint": base},
@@ -86,14 +87,17 @@ def main() -> int:
     from web3 import Web3
     meta = read_metadata(w3)
     new = desired(meta)
-    if (meta.get("services") == new["services"]
-            and meta.get("registrations") == new["registrations"]
-            and meta.get("description") == new["description"]
-            and meta.get("x402Support") == new["x402Support"]
-            and meta.get("active") == new["active"]):
+    # Compare the whole card. Listing fields by hand meant an update that changed
+    # `name` (or x402Support, or active) was reported as "already up to date" and
+    # never sent — a fix that silently did nothing. The card is small; compare it all.
+    ignored = {"type"}
+    drift = {k: (meta.get(k), v) for k, v in new.items()
+             if k not in ignored and meta.get(k) != v}
+    if not drift:
         print("metadata already up to date — nothing to send")
         print(json.dumps(new.get("services"), indent=1))
         return 0
+    print("card drift to write:", {k: f"{old!r} -> {new!r}" for k, (old, new) in drift.items()})
 
     uri = "data:application/json;base64," + base64.b64encode(
         json.dumps(new, separators=(",", ":")).encode()).decode()

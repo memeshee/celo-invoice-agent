@@ -22,7 +22,7 @@ from . import attribution
 
 CELO_CHAIN_ID = 42220
 RPC = os.environ.get("CELO_RPC_URL", "https://forno.celo.org")
-UA = "celo-invoice-agent/1.0"
+UA = "impay/1.0"
 
 ERC20_TRANSFER_ABI = [{
     "name": "transfer", "type": "function", "stateMutability": "nonpayable",
