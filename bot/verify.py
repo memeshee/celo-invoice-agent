@@ -10,7 +10,7 @@ transaction level — not on the individual transfer.
 Rules, all of which must hold:
 - the transaction exists, succeeded, and was not initiated by the payee;
 - it contains a Transfer of the expected token to the payout address;
-- for at least the expected atomic amount, sent from someone other than the payee.
+- for the expected atomic amount (within MAX_OVERPAY_BPS), from someone else.
 
 RPC first with retries (Forno intermittently returns null for old receipts), and
 Blockscout v2 as fallback, so a flaky node cannot manufacture a failure either.
@@ -141,6 +141,6 @@ def payment_proof(invoice: dict, *, tx: str | None = None, web3=None) -> dict:
                          f"{want_value} (>{MAX_OVERPAY_BPS / 100:.0f}% over) — needs a human")
         out["overpaid"] = overpaid[0][2]
         return out
-    out["reason"] = (f"no {req.get('symbol')} payment to {pay_to[:10]}… of at least "
-                     f"{want_value} (saw {len(transfers)} transfers)")
+    out["reason"] = (f"no {req.get('symbol')} payment to {pay_to[:10]}… of "
+                     f"{want_value}±{MAX_OVERPAY_BPS / 100:.0f}% (saw {len(transfers)} transfers)")
     return out

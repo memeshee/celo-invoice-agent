@@ -10,7 +10,8 @@ Built for the Celo *Agents on Open Rails* hackathon. Celo mainnet only.
 
 ![A live invoice page on Celo mainnet](docs/invoice-page.png)
 
-**Two are open right now**, screened, waiting for anyone to pay them:
+**Two are open for anyone to pay** (every other invoice in the store has been
+expired, so a stray click cannot send money to a test), screened and waiting:
 
 - [0.05 USDC](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/i/INV-0007-2782D9) — the asset a Celo wallet is most likely to hold
 - [25 wBRL](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/i/INV-0008-9E74F4) — the LatAm path, with a prefilled Ripio on-ramp link if you hold no stablecoin at all
@@ -20,7 +21,7 @@ be told, and nothing is confirmed by hand.
 
 - **Live pages:** https://newsletter-effect-backgrounds-attribute.trycloudflare.com
   — [`/proof`](https://newsletter-effect-backgrounds-attribute.trycloudflare.com/proof)
-  re-verifies every onchain claim on each render
+  re-verifies every onchain claim (cached 60s)
 - **Bot:** https://t.me/notcelordbot
 - **Agent identity:** ERC-8004 `agentId 10005` on Celo — the onchain card declares
   this service as its `web` endpoint (`services[]`), so the endpoint and the
@@ -64,7 +65,7 @@ them as users.
 |---|---|
 | ERC-8004 agent identity registered (`agentId 10005`) | [`0x9c101fb0…2b70`](https://celoscan.io/tx/0x9c101fb0dcbfeba0d95c0172b22c996bec949a4d908b4daeaf486c0cd12b2b70) |
 | Agent card updated onchain to declare its live `web` service (`setAgentURI`, ERC-8021 tagged) | [`0xa9416d84…9b1e64`](https://celoscan.io/tx/0xa9416d841b049e3546bab955cff3388ef2b160b9f468f28342da557bea9b1e64) |
-| Agent card corrected onchain: it claimed invoices settle *over the x402 facilitator*; they settle as ERC-20 transfers | [`0xdcd801a4…adec1`](https://celoscan.io/tx/0xdcd801a45f54957a016047b8cd9fe7e1470dc4a9113804b14a97bd5e01eadec1) |
+| Agent card corrected twice: it claimed invoices settle *over the x402 facilitator*, and advertised `x402Support: true` though we only ever *pay* over x402 | [`0xdcd801a4…adec1`](https://celoscan.io/tx/0xdcd801a45f54957a016047b8cd9fe7e1470dc4a9113804b14a97bd5e01eadec1) · [`0xdb1a214f…9584a1`](https://celoscan.io/tx/0xdb1a214f29df4452a38fea0d45c1df2babbaba2c57633a4c550faf3b459584a1) |
 | Invoice paid 0.02 USA₮ → settled autonomously, no human | [`0x8a19fcc4…c724c4`](https://celoscan.io/tx/0x8a19fcc4139524502b52cc25748b9a40bee64384d09986b8f809690b77c724c4) |
 | **Withdrawn claim:** 0.998543 USA₮ arrived via a Squid bridge for a 0.1 USD invoice; the verifier refuses it as an amount mismatch | [`0xe5796183…1073ee`](https://celoscan.io/tx/0xe5796183431382dd8e2e543b11140497420c8bb09cc35f5a24a52e76d731073e) |
 | Agent buys an FX rate — $0.002 | [`0x1e2be36e…c51b4`](https://celoscan.io/tx/0x1e2be36e4eceb26a1908ccd1decbf35d29a5f411ab5dcf00c269e7fdad0c51b4) |
@@ -77,8 +78,9 @@ Paid-call receipts (raw 402 responses, headers and all) are committed under
 
 ![The /proof page](docs/proof-page.png)
 
-`/proof` is not a dashboard: it re-runs `bot/verify.payment_proof` on every render,
-so the numbers are re-derived from Celo each time the page loads — and it labels
+`/proof` is not a dashboard: it re-runs `bot/verify.payment_proof` over every
+settled invoice (result cached 60s, and it says so on the page), so the numbers are
+re-derived from Celo rather than read back out of our own store — and it labels
 payments from the builder's own wallets *builder-funded*, because those prove the
 rails work, not that a user showed up.
 

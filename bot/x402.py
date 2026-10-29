@@ -7,7 +7,7 @@ Two legs, both real money:
    Forno RPC + web3.py event logs.
 2. Machine leg: Celo native x402 facilitator (api.x402.celo.org) for
    agent-to-agent payments — /supported (open), /verify (open),
-   /settle (X-API-Key). Asset params below are read live from /supported.
+   /settle (X-API-Key). Asset params below are a pinned table (supported_assets() re-checks them in tests).
 
 Verified live 2026-10-07: facilitator mainnet ok; USAT 0xD2ab...771
 ("Tether America USD", v1, eip3009, 6 dec).

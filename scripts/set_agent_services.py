@@ -68,7 +68,10 @@ def desired(meta: dict) -> dict:
         # The invoice pages and the /proof page are real, public, and answer 200.
         {"name": "web", "endpoint": base},
     ]
-    out["x402Support"] = True
+    # Honest: false. We PAY over x402 (services, outbound); we do not accept x402
+    # settlement, because a payer sends a plain ERC-20 transfer to the freelancer.
+    # /agent.json and this card must say the same thing about the same agent.
+    out["x402Support"] = False
     out["active"] = True
     out["registrations"] = [
         {"agentId": AGENT_ID, "agentRegistry": f"eip155:42220:{REGISTRY}"}
@@ -85,7 +88,9 @@ def main() -> int:
     new = desired(meta)
     if (meta.get("services") == new["services"]
             and meta.get("registrations") == new["registrations"]
-            and meta.get("description") == new["description"]):
+            and meta.get("description") == new["description"]
+            and meta.get("x402Support") == new["x402Support"]
+            and meta.get("active") == new["active"]):
         print("metadata already up to date — nothing to send")
         print(json.dumps(new.get("services"), indent=1))
         return 0

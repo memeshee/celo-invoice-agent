@@ -447,7 +447,14 @@ def render_invoice(payload: dict) -> str:
     elif status == "dropped":
         body = ('<div class="warn"><b>Dropped.</b><br>'
                 'This invoice was rejected and cannot be paid.</div>')
-    else:
+    elif status == "expired":
+        # An expired invoice is retired, so it must not render a pay button either:
+        # a stale link that still takes money is the same bug as a held page that
+        # still takes money, and judges do click old links.
+        body = ('<div class="warn"><b>Expired.</b><br>'
+                'This invoice was retired and will not be settled. '
+                'Ask the freelancer for a current one.</div>')
+    elif status == "open":
         body = (
             f'<a class="btn" href="{_e(payload["pay_link_celo"])}">Pay '
             f'{_e(payload.get("settle_amount") or "")}</a>'
@@ -460,6 +467,10 @@ def render_invoice(payload: dict) -> str:
             f'<span class="mono">{_e(payload.get("pay_to") or "")}</span> on Celo. '
             f'This page confirms by itself — no need to tell anyone you paid.</div>'
         )
+    else:
+        # Never fall through to a pay button: an unknown state is not payable.
+        body = ('<div class="warn"><b>Not payable.</b><br>'
+                'This invoice is in an unknown state and will not be settled.</div>')
 
     row_html = "".join(f'<div class="row"><dt>{k}</dt><dd>{v}</dd></div>' for k, v in rows)
     return f"""<!doctype html>
@@ -559,8 +570,8 @@ def render_index(stats: dict | None = None) -> str:
   <a class="btn" href="https://t.me/notcelordbot" target="_blank" rel="noreferrer">
     Try it on Telegram</a>
   <div class="foot">Invoice pages live at <span class="mono">/i/&lt;invoice-id&gt;</span>.
-  Every settlement claim on <a href="/proof">/proof</a> is re-derived from Celo on
-  each render.</div>
+  Every settlement claim on <a href="/proof">/proof</a> is re-derived from Celo
+  (cached 60s), not read back out of our own database.</div>
 </main></body></html>"""
 
 

@@ -214,6 +214,23 @@ def set_services(inv_id: str, status: str, enrichment: dict | None = None) -> di
     return inv
 
 
+def expire(inv_id: str, reason: str = "stale test invoice") -> dict | None:
+    """Retire an open invoice that nobody is going to pay.
+
+    Every open invoice has a live pay page. Leaving months of test invoices open
+    means a judge can land on one and pay money for something that was never real,
+    so they are expired rather than silently left there.
+    """
+    db = _load()
+    inv = db["invoices"].get(str(inv_id).upper())
+    if not inv or inv.get("status") != "open":
+        return None
+    inv["status"] = "expired"
+    inv["expired_reason"] = reason
+    _save(db)
+    return inv
+
+
 def tx_used(tx_hash: str) -> str | None:
     """Invoice id that already consumed this witness transfer, if any."""
     used = _load().get("used_tx") or {}

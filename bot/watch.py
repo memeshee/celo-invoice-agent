@@ -154,16 +154,19 @@ def _enrich_enabled() -> bool:
 
 
 def screening_allows(invoice: dict) -> bool:
-    """Has the paid screening finished, or is it deliberately switched off?
+    """Has the paid screening actually FINISHED, or is it deliberately off?
 
-    Invoices are created with services_status="pending" while the agent is buying
-    its sanctions screens. Settling then would let a hit arrive after the money
-    did. With enrichment disabled, "pending" is just the creation default and must
-    not freeze settlement forever.
+    Only "done" clears an invoice. Treating a failed screen ("error") as clearance
+    meant a purchase that crashed blocked nothing at all — the card on chain says a
+    sanctions hit stops settlement, so an unscreened invoice must not settle.
+
+    Invoices are created with services_status="pending" and stay unsettleable until
+    the agent has bought its screens. With enrichment disabled there is no screen to
+    wait for, and "pending" is just the creation default.
     """
     if not _enrich_enabled():
         return True
-    return (invoice.get("services_status") or "") not in ("pending", "retry")
+    return (invoice.get("services_status") or "") == "done"
 
 
 def find_settlement(invoice: dict, transfers: list[dict], *, confirm=None) -> dict | None:
@@ -247,9 +250,13 @@ def enrich_pending(*, log=print, enricher=None, max_per_loop: int | None = None)
             enrichment = (enricher or services.enrich)(inv)
         except Exception as e:  # noqa: BLE001
             log(f"[services] enrichment crashed for {inv['id']}: {type(e).__name__}: {e}")
-            store.set_services(inv["id"], "error")
+            # "retry", not "error": a crashed screen must be retried, and until it
+            # succeeds the invoice is not settleable.
+            store.set_services(inv["id"], "retry")
             continue
-        status = "done" if any(r.get("ok") for r in enrichment["receipts"]) else "error"
+        # A failure to buy does not block settlement forever — it blocks it until
+        # a later loop succeeds, which is what "retry" means to the sweeper.
+        status = "done" if any(r.get("ok") for r in enrichment["receipts"]) else "retry"
         updated = store.set_services(inv["id"], status, enrichment)
         done.append(updated or {})
         spent = enrichment.get("spent_usd")

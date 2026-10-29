@@ -280,7 +280,17 @@ async def check(update: Update, ctx) -> None:
             "A held invoice needs an operator to /release it first."
         )
         return
+    from . import watch as watch_mod
     from . import x402
+    # The watcher refuses to settle an unscreened invoice; /check is the same money
+    # question, so it must give the same answer.
+    if not watch_mod.screening_allows(inv):
+        await msg.reply_text(
+            f"{inv['id']}: the agent's sanctions screen has not finished "
+            f"(status: {inv.get('services_status')}), so it will not settle yet. "
+            "The watcher retries the purchase; /check will work once it succeeds."
+        )
+        return
     wallet = store.payout_for(inv)
     if not wallet:
         await msg.reply_text("No payout address on this invoice yet (/wallet 0x...).")

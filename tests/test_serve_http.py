@@ -137,3 +137,28 @@ def test_invoice_proof_endpoint_returns_the_verdict(base_url, monkeypatch):
 def test_invoice_proof_endpoint_404s_for_an_unknown_invoice(base_url):
     code, _, body = get(base_url + "/api/invoice/INV-9999-NOPE/proof")
     assert code == 404 and json.loads(body)["error"] == "unknown invoice"
+
+
+@pytest.mark.parametrize("status,words", [
+    ("expired", "Expired"),
+    ("held", "Held for review"),
+    ("dropped", "Dropped"),
+    ("blocked", "Blocked by sanctions screening"),
+])
+def test_non_payable_invoices_render_no_pay_button(base_url, status, words):
+    """A stale or held link that still takes money is the bug this prevents."""
+    inv = _invoice()
+    db = store._load()
+    db["invoices"][inv["id"]]["status"] = status
+    db["invoices"][inv["id"]]["blocked_reason"] = "test"
+    store._save(db)
+    code, _, body = get(f"{base_url}/i/{inv['id']}")
+    assert code == 200 and words in body
+    assert "celo://wallet/pay" not in body
+    assert "Pay 10" not in body
+
+
+def test_an_open_invoice_does_render_a_pay_button(base_url):
+    inv = _invoice()
+    code, _, body = get(f"{base_url}/i/{inv['id']}")
+    assert code == 200 and "celo://wallet/pay" in body

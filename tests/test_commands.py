@@ -184,3 +184,13 @@ def test_pay_explains_itself_when_there_is_no_payout_address(monkeypatch):
     update, ctx = cmd([inv["id"]])
     run(main.pay(update, ctx))
     assert "no payout address" in update.message.sent
+
+
+def test_expiring_a_stale_invoice_closes_its_pay_page():
+    """Every open invoice has a live pay page; a stale one must not be payable."""
+    inv = store.create({"amount": "10", "currency": "USD", "recipient": "Ana"},
+                       {"decision": "settle"}, creator="user7", payout_address=OTHER)
+    assert store.expire(inv["id"], "test")["status"] == "expired"
+    assert inv["id"] not in [i["id"] for i in store.open_invoices()]
+    assert store.expire(inv["id"]) is None          # only open invoices expire
+    assert store.mark_settled(inv["id"], "0x" + "ee" * 32) is None
