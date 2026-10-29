@@ -73,7 +73,8 @@ def payout_for(invoice: dict) -> str:
 def create(draft: dict, screen: dict, creator: str,
            created_block: int | None = None,
            payout_address: str | None = None,
-           creator_chat_id: int | None = None) -> dict:
+           creator_chat_id: int | None = None,
+           status: str = "open") -> dict:
     db = _load()
     db["seq"] += 1
     db.setdefault("used_tx", {})
@@ -95,15 +96,57 @@ def create(draft: dict, screen: dict, creator: str,
             "decision": screen.get("decision"),
             "suspicious_p": screen.get("suspicious_p"),
             "risk_level": screen.get("risk_level"),
+            "duplicate_p": screen.get("duplicate_p"),
+            "pressure_p": screen.get("pressure_p"),
         },
-        "status": "open",
+        "status": status,
         "settlement_tx": None,
         # The agent buys its compliance layer per invoice, asynchronously —
         # minting must not block on three paid calls.
-        "services_status": "pending",
+        "services_status": "pending" if status == "open" else "held",
         "services": [],
     }
     db["invoices"][inv_id] = inv
+    _save(db)
+    return inv
+
+
+def held_invoices() -> list[dict]:
+    return [i for i in _load()["invoices"].values() if i.get("status") == "held"]
+
+
+def drop(inv_id: str) -> dict | None:
+    """Operator rejects a held invoice. Kept in the store as evidence, not deleted."""
+    db = _load()
+    inv = db["invoices"].get(str(inv_id).upper())
+    if not inv or inv.get("status") != "held":
+        return None
+    inv["status"] = "dropped"
+    inv["dropped_at"] = int(time.time())
+    _save(db)
+    return inv
+
+
+def release(inv_id: str, *, payout_address: str | None,
+            created_block: int | None) -> dict | None:
+    """Operator clears a held invoice so it can be paid.
+
+    A "review" verdict used to dead-end: the bot told the user a human would
+    release it and there was no way to do so. Settlement only becomes possible
+    here, and the settlement window starts at release, not at the original draft
+    — otherwise a transfer mined while the invoice was held could serve as its
+    proof.
+    """
+    db = _load()
+    inv = db["invoices"].get(str(inv_id).upper())
+    if not inv or inv.get("status") != "held":
+        return None
+    inv["status"] = "open"
+    inv["released"] = int(time.time())
+    inv["created_block"] = created_block
+    if payout_address:
+        inv["payout_address"] = payout_address
+    inv["services_status"] = "pending"
     _save(db)
     return inv
 

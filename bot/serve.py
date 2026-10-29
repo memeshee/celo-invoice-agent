@@ -151,6 +151,7 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b121
 .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
 .open{background:#1e3a5f;color:#93c5fd}
 .settled{background:#14351f;color:#6ee7b7}
+.held{background:#3b2f14;color:#fcd34d}
 a.btn{display:block;text-align:center;text-decoration:none;margin-top:16px;padding:14px 18px;
       border-radius:12px;font-weight:650;background:#5eead4;color:#06231c}
 a.ghost{background:transparent;color:#5eead4;border:1px solid #24463c;font-weight:550}
@@ -165,8 +166,14 @@ a.ghost{background:transparent;color:#5eead4;border:1px solid #24463c;font-weigh
 def render_invoice(payload: dict) -> str:
     inv_id = _e(payload["id"])
     status = payload.get("status") or "open"
-    badge = (f'<span class="badge settled" id="badge">settled</span>' if status == "settled"
-             else '<span class="badge open" id="badge">awaiting payment</span>')
+    badges = {
+        "settled": '<span class="badge settled" id="badge">settled</span>',
+        "open": '<span class="badge open" id="badge">awaiting payment</span>',
+        "held": '<span class="badge held" id="badge">held for review</span>',
+        "blocked": '<span class="badge held" id="badge">blocked</span>',
+        "dropped": '<span class="badge held" id="badge">dropped</span>',
+    }
+    badge = badges.get(status, badges["held"])
     rows = [
         ("Recipient", _e(payload.get("recipient") or "—")),
         ("Invoice", _e(payload.get("invoice_amount") or "—")),
@@ -208,12 +215,20 @@ def render_invoice(payload: dict) -> str:
 
     if payload.get("error"):
         body = f'<div class="warn">{_e(payload["error"])}</div>'
+    elif status == "settled":
+        body = '<div class="note" id="paid" style="color:#6ee7b7">Payment confirmed onchain.</div>'
     elif status == "blocked":
         body = ('<div class="warn"><b>Blocked by sanctions screening.</b><br>'
                 f'{_e(screening.get("blocked_reason") or "")}<br>'
                 'This invoice will not settle until a human clears it.</div>')
-    elif status == "settled":
-        body = '<div class="note" id="paid" style="color:#6ee7b7">Payment confirmed onchain.</div>'
+    elif status == "held":
+        # A held invoice is not payable, so it must not render a pay button:
+        # otherwise the payer sends money the agent will refuse to settle.
+        body = ('<div class="warn"><b>Held for review.</b><br>'
+                'An operator has to clear this invoice before it can be paid.</div>')
+    elif status == "dropped":
+        body = ('<div class="warn"><b>Dropped.</b><br>'
+                'This invoice was rejected and cannot be paid.</div>')
     else:
         body = (
             f'<a class="btn" href="{_e(payload["pay_link_celo"])}">Pay '

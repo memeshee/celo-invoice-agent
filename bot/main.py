@@ -44,14 +44,22 @@ def pay_url(inv_id: str) -> str:
 PENDING: dict[tuple[int, int], dict] = {}
 
 
+def _pct(value) -> str:
+    return f"{value:.2f}" if isinstance(value, (int, float)) else "n/a"
+
+
 def fmt_draft(d: dict, s: dict) -> str:
-    return (
-        f"Invoice draft\n"
-        f"Amount: {d.get('amount')} {d.get('currency') or ''}\n"
-        f"Recipient: {d.get('recipient') or '—'}\n"
+    lines = [
+        "Invoice draft",
+        f"Amount: {d.get('amount')} {d.get('currency') or ''}",
+        f"Recipient: {d.get('recipient') or '—'}",
         f"Trust: {s.get('decision')} (risk {s.get('risk_level')}, "
-        f"suspicion {s.get('suspicious_p'):.2f})"
-    )
+        f"suspicion {_pct(s.get('suspicious_p'))})",
+    ]
+    reasons = jev.trust_reasons(s)
+    if reasons:
+        lines.append("Why: " + "; ".join(reasons))
+    return "\n".join(lines)
 
 
 def must_msg(update: Update) -> Message:
@@ -62,6 +70,12 @@ def must_msg(update: Update) -> Message:
 
 def _user_id(user) -> int:
     return int(getattr(user, "id", 0) or 0)
+
+
+def _creator(msg) -> str:
+    """Stable creator handle; `msg.from_user` can be absent on some updates."""
+    user = getattr(msg, "from_user", None)
+    return str(getattr(user, "username", None) or getattr(user, "id", 0) or 0)
 
 
 async def start(update: Update, _ctx) -> None:
@@ -77,10 +91,10 @@ async def start(update: Update, _ctx) -> None:
 async def new_invoice(update: Update, ctx) -> None:
     msg = must_msg(update)
     text = " ".join(ctx.args) if ctx.args else (msg.text or "")
-    await handle_text(update, text)
+    await handle_text(update, text, ctx)
 
 
-async def handle_text(update: Update, text: str) -> None:
+async def handle_text(update: Update, text: str, ctx=None) -> None:
     msg = must_msg(update)
     try:
         draft = jev.parse_invoice(text)
@@ -122,11 +136,23 @@ async def handle_text(update: Update, text: str) -> None:
         )
         return
     if decision != "settle":
-        # "review" is a hold: it must not reach the mint button.
+        # "review" is a hold, not a dead end: park it as a ticket an operator can
+        # actually release, instead of telling the user a human will help and
+        # giving that human nothing to act on.
+        held = store.create(draft, screen,
+                            creator=_creator(msg),
+                            created_block=None,
+                            payout_address=store.wallet_for(_user_id(msg.from_user)),
+                            creator_chat_id=msg.chat_id,
+                            status="held")
+        reasons = jev.trust_reasons(screen)
         await msg.reply_text(
-            f"Held for review (risk {screen.get('risk_level')}). "
-            "An operator has to release this one."
+            f"Held for review as {held['id']} (risk {screen.get('risk_level')}).\n"
+            f"{('Why: ' + '; '.join(reasons) + chr(10)) if reasons else ''}"
+            "An operator can release it with /release " + held["id"] + ", "
+            "or drop it with /drop " + held["id"] + "."
         )
+        await ping_operator(ctx, held, reasons)
         return
     PENDING[(msg.chat_id, _user_id(msg.from_user))] = {
         "draft": draft,
@@ -339,6 +365,87 @@ async def wallet(update: Update, ctx) -> None:
     await msg.reply_text(f"Payout wallet set to {address}\nNew invoices pay you directly on Celo.")
 
 
+def operator_ids() -> set[str]:
+    """Telegram ids allowed to release held invoices. Empty set fails closed."""
+    raw = os.environ.get("OPERATOR_TELEGRAM_ID", "")
+    return {x.strip() for x in raw.split(",") if x.strip()}
+
+
+def _is_operator(update: Update) -> bool:
+    ops = operator_ids()
+    user = update.effective_user
+    return bool(ops) and user is not None and str(user.id) in ops
+
+
+async def ping_operator(ctx, inv: dict, reasons: list[str]) -> None:
+    """Tell a human a decision is waiting on them. Best-effort, never fatal."""
+    bot = getattr(ctx, "bot", None)
+    if bot is None or not operator_ids():
+        return
+    text = (f"Held for review: {inv['id']}\n"
+            f"{inv.get('amount')} {inv.get('currency')} → {inv.get('recipient')}\n"
+            + (f"Why: {'; '.join(reasons)}\n" if reasons else "")
+            + f"/release {inv['id']}   /drop {inv['id']}")
+    for op in operator_ids():
+        try:
+            await bot.send_message(chat_id=int(op), text=text)
+        except Exception:  # noqa: BLE001 — a ping failure must not lose the ticket
+            log.exception("operator ping failed")
+
+
+async def release(update: Update, ctx) -> None:
+    msg = must_msg(update)
+    if not _is_operator(update):
+        await msg.reply_text("Only an operator can release a held invoice.")
+        return
+    if not ctx.args:
+        await msg.reply_text("Usage: /release INV-0007-ABCDEF")
+        return
+    from . import x402
+    inv = store.release(ctx.args[0], payout_address=None, created_block=x402.head_block())
+    if not inv:
+        await msg.reply_text(f"No held invoice {ctx.args[0]}.")
+        return
+    await msg.reply_text(f"Released {inv['id']}\n{pay_url(inv['id'])}")
+    if inv.get("creator_chat_id") and getattr(ctx, "bot", None) is not None:
+        try:
+            await ctx.bot.send_message(
+                chat_id=inv["creator_chat_id"],
+                text=f"{inv['id']} was cleared by an operator and can be paid now:\n"
+                     f"{pay_url(inv['id'])}")
+        except Exception:  # noqa: BLE001
+            log.exception("could not notify the invoice creator of the release")
+
+
+async def drop(update: Update, ctx) -> None:
+    msg = must_msg(update)
+    if not _is_operator(update):
+        await msg.reply_text("Only an operator can drop a held invoice.")
+        return
+    if not ctx.args:
+        await msg.reply_text("Usage: /drop INV-0007-ABCDEF")
+        return
+    inv = store.drop(ctx.args[0])
+    await msg.reply_text(f"Dropped {inv['id']}." if inv else f"No held invoice {ctx.args[0]}.")
+
+
+async def held(update: Update, ctx) -> None:
+    msg = must_msg(update)
+    if not _is_operator(update):
+        await msg.reply_text("Only an operator can list held invoices.")
+        return
+    tickets = store.held_invoices()
+    if not tickets:
+        await msg.reply_text("Nothing held.")
+        return
+    lines = ["Held:"]
+    for inv in tickets:
+        reasons = jev.trust_reasons(inv.get("trust") or {})
+        lines.append(f"  {inv['id']} — {inv['amount']} {inv['currency']} → {inv.get('recipient')}"
+                     + (f" ({'; '.join(reasons)})" if reasons else ""))
+    await msg.reply_text("\n".join(lines))
+
+
 def main() -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not token:
@@ -350,6 +457,9 @@ def main() -> None:
     app.add_handler(CommandHandler("pay", pay))
     app.add_handler(CommandHandler("check", check))
     app.add_handler(CommandHandler("receipt", receipt))
+    app.add_handler(CommandHandler("release", release))
+    app.add_handler(CommandHandler("drop", drop))
+    app.add_handler(CommandHandler("held", held))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, new_invoice))
     app.run_polling()

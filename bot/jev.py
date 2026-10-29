@@ -164,6 +164,31 @@ def _as_float(value, default):
 SCREEN_LEVELS = ["clean", "review", "block"]
 
 
+def trust_reasons(screen: dict) -> list[str]:
+    """Plain-language reasons for a screening decision.
+
+    The risk number alone is unfalsifiable to the person reading it: "risk 0.65"
+    tells a freelancer nothing about what to change. Name the signals that
+    actually crossed a threshold.
+    """
+    reasons = []
+    defs = (
+        ("suspicious_p", 0.5, "looks like fraud"),
+        ("duplicate_p", 0.5, "duplicates a recent invoice"),
+        ("pressure_p", 0.5, "uses urgency/pressure language"),
+    )
+    for key, floor, text in defs:
+        value = screen.get(key)
+        if isinstance(value, (int, float)) and value >= floor:
+            reasons.append(f"{text} ({value:.2f})")
+    level = screen.get("risk_level")
+    if level == "block":
+        reasons.append("scored 'block' by the risk model")
+    elif level == "review" and not reasons:
+        reasons.append("flagged for a human glance by the risk model")
+    return reasons
+
+
 def screen_invoice(invoice: dict, recent_descriptions: list[str] | None = None) -> dict:
     """Fraud screen. One batched call; code applies confidence-gated routing.
 
