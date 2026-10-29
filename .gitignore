@@ -5,3 +5,9 @@ __pycache__/
 invoices.json
 *.log
 fx_cache.json
+spend_ledger.json
+tunnel.log
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
