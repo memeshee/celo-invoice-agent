@@ -1,0 +1,104 @@
+{
+ "date": "2026-10-31",
+ "network": "eip155:42220",
+ "network_name": "Celo",
+ "payer": "0xDbFe5c4d0256D2459bB216caB905999Ca41bE349",
+ "query": "Celo ERC-8021 attribution tags for AI agent transactions",
+ "count": 10,
+ "results_count": 10,
+ "usdc_before_atomic": 454699,
+ "usdc_after_atomic": 444699,
+ "usdc_spent_atomic": 10000,
+ "usdc_before": 0.454699,
+ "usdc_after": 0.444699,
+ "usdc_spent": 0.01,
+ "paid_usdc_atomic": 10000,
+ "response": {
+  "query": "Celo ERC-8021 attribution tags for AI agent transactions",
+  "count": 10,
+  "results": [
+   {
+    "title": "GitHub - celo-org/attribution-tags: ERC-8021 builder-code attribution SDK for Celo (MiniPay, Proof of Ship, ecosystem apps) \u00b7 GitHub",
+    "url": "https://github.com/celo-org/attribution-tags",
+    "description": "ERC-8021 attribution on Celo. One small suffix at the end of a transaction makes it identifiable as having come through your app.",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "sdk: withAttribution \u2014 viem wallet-client extension that tags every transaction (closes #19) by GigaHierz \u00b7 Pull Request #23 \u00b7 celo-org/attribution-tags \u00b7 GitHub",
+    "url": "https://github.com/celo-org/attribution-tags/pull/23",
+    "description": "Builders append the ERC-8021 suffix by hand at each call site, and the path that forgets produces untagged transactions with no error anywhere. This adds a viem wallet-client extension so the suffix is attached once, where the client is built: ...",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "GitHub - oma035/nairabridge-fx: Non-custodial AI agent on Celo that converts cNGN and USDT at the best Textile FX rate for Nigerian freelancers, with a public Quote Sentinel rate board tracking live rates and liquidity. Built for Agents on Open Rails. \u00b7 GitHub",
+    "url": "https://github.com/oma035/nairabridge-fx",
+    "description": "cp .env.example .env # set TELEGRAM_BOT_TOKEN and PUBLIC_URL at minimum npm install npm test # 69 checks: link, convert, settle, board, alerts npm run quote # live Textile quotes on Celo, read-only npm run dev # web + bot + Sentinel \u00b7 Main settings (see .env.example): Variable \u00b7 Purpose \u00b7 ATTRIBUTION_CODE \u00b7 ERC-8021 code applied to every transaction \u00b7",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "Add ERC-8021 attribution tags to Celo transactions by dubzn \u00b7 Pull Request #19 \u00b7 caravana-studio/jokers-of-neon-torii-worker \u00b7 GitHub",
+    "url": "https://github.com/caravana-studio/jokers-of-neon-torii-worker/pull/19",
+    "description": "Celo transactions emitted by the worker currently lack Jokers attribution metadata. Append the assigned ERC-8021 code celo_zni2b7n2 so indexers can attribute activity to the app. Changes Add @celo...",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "GitHub - frerehugi/Anon: Anon \u2013 autonomer Agenten-Loop mit x402-Diensten und ERC-8004-Identit\u00e4t auf Celo \u00b7 GitHub",
+    "url": "https://github.com/frerehugi/Anon",
+    "description": "ERC-8021 attribution tag: celo_2cc7b29e484b (every Celo mainnet transaction carries it; x402 settlements are attributed via the payTo address instead)",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "Task 2: txBuilder with ERC-8021 attribution tag by defiprince-bit \u00b7 Pull Request #10 \u00b7 defiprince-bit/nairaguard \u00b7 GitHub",
+    "url": "https://github.com/defiprince-bit/nairaguard/pull/10",
+    "description": "Tag format (source: .agents/sk... @celo/attribution-tags@^0.5.0): tag celo_9efd0f97b491 encoded as an ERC-8021 data suffix (toDataSuffix, ends with marker 0x8021\u20268021) appended to calldata....",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "feat: ERC-8021 on every tx and ERC-8004 agent cards for Celo mainnet by FrancoDuran23 \u00b7 Pull Request #2 \u00b7 FrancoDuran23/celoop \u00b7 GitHub",
+    "url": "https://github.com/FrancoDuran23/celoop/pull/2",
+    "description": "ATTRIBUTION_CODE=celo_97a761e4eeab, AGENT_ID, AUDITOR_ID, optional AGENT_ADDRESS, AUDITOR_ADDRESS, AGENT_NAME, AGENT_DESCRIPTION, AUDITOR_NAME, AUDITOR_DESCRIPTION, TELEGRAM_BOT_USERNAME, IDENTITY_REGISTRY.",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "GitHub - Manuel-dev01/arbolito: Autonomous cambista agent on Celo: converts and sends wARS/wBRL/USA\u20ae via Textile RFQ + Uniswap, with onchain-verifiable route receipts \u00b7 GitHub",
+    "url": "https://github.com/Manuel-dev01/arbolito",
+    "description": "Built for Celo \u00b7 Agents on Open Rails (deadline Nov 9, 2026). Everything below runs on Celo mainnet with real money, and every transaction Arbolito sends carries our ERC-8021 attribution code celo_e054d92430a5.",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "GitHub - landingen24h/ar-data-agent: Pay-per-call Argentine data agent (x402 on Celo, wARS) \u00b7 GitHub",
+    "url": "https://github.com/landingen24h/ar-data-agent",
+    "description": "Registered as agentId 9988 ...4h.com/celo/.well-known/agent-registration.json. ERC-8021 attribution tag: the project's code is celo_85d42ed6ebcf, the code issued at hackathon enrollment (src/attribution-code.js, the single ...",
+    "age": null,
+    "publishedAt": null
+   },
+   {
+    "title": "GitHub - zwang1111/agenttab-celo \u00b7 GitHub",
+    "url": "https://github.com/zwang1111/agenttab-celo",
+    "description": "Celo mainnet, public repo \u00b7 \u2705 AgentTab live and verified on mainnet; this repo is public \u00b7 ERC-8021 attribution tag on every tx \u00b7 \u2705 Wired in code: every viem wallet client is extended with withAttribution(ATTRIBUTION_CODE) from @celo/attribution-tags (agent/src/common.ts), matching BUILDERS.md.",
+    "age": null,
+    "publishedAt": null
+   }
+  ],
+  "untrustedContent": true,
+  "next": {
+   "slug": "answer",
+   "route": "GET /api/answer",
+   "price": "$0.08"
+  }
+ },
+ "settlement_tx": "0x9242aca78662a5593a291c9967d23d29e31330359a548e777dfa8218404d96a9",
+ "settlement_block": 81486139,
+ "settlement_status": "0x1",
+ "attempts": 1,
+ "elapsed_s": 5.6,
+ "payee": "0xabf4fabd7c416fb67202e5f9002389fc75e2a9d0"
+}
