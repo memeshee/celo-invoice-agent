@@ -26,6 +26,33 @@ def tmp_store(tmp_path, monkeypatch):
     return tmp_path
 
 
+class StubWeb3:
+    """A chain that answers locally, so no test in this file reaches Forno.
+
+    A paid call's PAYMENT-RESPONSE header carries a tx hash, and services.purchase
+    verifies it on chain; without this the default suite depends on a live RPC
+    call succeeding, which is exactly what an offline sandbox cannot do.
+    """
+
+    class _Eth:
+        def __init__(self, payer=PAYER, status=1, value=2000):
+            self.payer, self.status, self.value = payer, status, value
+
+        def get_transaction_receipt(self, _tx):
+            return {"status": self.status, "blockNumber": 5, "logs": [
+                {"topics": [TRANSFER_TOPIC, "0x" + "0" * 24 + self.payer[2:],
+                            "0x" + "0" * 64],
+                 "data": "0x" + format(self.value, "064x")}]}
+
+    def __init__(self, **kw):
+        self.eth = self._Eth(**kw)
+
+
+@pytest.fixture(autouse=True)
+def _no_live_chain(monkeypatch):
+    monkeypatch.setattr(services.chain, "w3", lambda: StubWeb3())
+
+
 class FakeResponse:
     def __init__(self, body: dict, status=200, pay=True):
         self.status_code = status
@@ -198,12 +225,17 @@ def test_enrichment_records_spend_and_stays_open_when_clean():
 def test_enrich_pending_is_capped_and_notifies():
     _a, _b = _invoice(), _invoice()
     clean = FakeResponse({"verdict": "no_match_on_lists_checked", "exactCount": 0})
+    sent = []
     done = watch.enrich_pending(
         enricher=lambda inv: services.enrich(inv, session_factory=lambda s: FakeSession(clean),
                                              log=lambda *_: None),
+        notifier=lambda chat_id, text: sent.append((chat_id, text)) or True,
         log=lambda *_: None, max_per_loop=1)
     assert len(done) == 1                      # cap respected
     assert len(store.invoices_awaiting_services()) == 1
+    # The notification is part of the contract, so it is asserted — injected,
+    # not sent: a test that pings api.telegram.org is not an offline test.
+    assert sent and "screened" in sent[0][1]
 
 
 def test_enrich_pending_skips_when_disabled(monkeypatch):

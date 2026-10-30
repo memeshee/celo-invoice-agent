@@ -235,11 +235,15 @@ def notify(chat_id: int | None, text: str, *, sender=None) -> bool:
         return False
 
 
-def enrich_pending(*, log=print, enricher=None, max_per_loop: int | None = None) -> list[dict]:
+def enrich_pending(*, log=print, enricher=None, notifier=None,
+                   max_per_loop: int | None = None) -> list[dict]:
     """Buy the services each pending invoice needs, then record what was bought.
 
     Runs in the same daemon as settlement so there is one moving part, and
     capped per loop so a burst of mints cannot drain the wallet in one pass.
+
+    `notifier` is injectable for the same reason `enricher` is: the offline test
+    suite must not reach api.telegram.org to prove that a notification happens.
     """
     if os.environ.get("SERVICES_ENRICH", "1") != "1":
         return []
@@ -272,7 +276,7 @@ def enrich_pending(*, log=print, enricher=None, max_per_loop: int | None = None)
                 msg = (f"{inv['id']} screened ✅\n"
                        f"Bought {len(bought)} services for ${spent}: {', '.join(bought)}\n"
                        f"Payout wallet and counterparty came back clean.")
-            notify(updated.get("creator_chat_id"), msg)
+            (notifier or notify)(updated.get("creator_chat_id"), msg)
     return done
 
 

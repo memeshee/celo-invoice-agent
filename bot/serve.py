@@ -279,12 +279,22 @@ def _screening(inv: dict) -> dict:
     }
 
 
+# Only an open invoice can take money, so only an open invoice gets priced.
+# Pricing a non-USD invoice needs a live FX rate, and that fetch used to run on
+# every status: in a sandbox with no network it failed, `error` was set, and the
+# page said "cannot price this invoice" instead of "Dropped" — the true status
+# hidden behind an unrelated network failure. A page that refuses payment has
+# nothing to price.
+PAYABLE_STATUSES = ("open",)
+
+
 def invoice_payload(inv: dict) -> dict:
-    """Everything the page and the API need, priced once."""
+    """Everything the page and the API need, priced once — if it is payable."""
     pay_to = store.payout_for(inv)
+    status = inv.get("status") or "open"
     out = {
         "id": inv["id"],
-        "status": inv.get("status"),
+        "status": status,
         "created": inv.get("created"),
         "recipient": inv.get("recipient"),
         "invoice_amount": f"{inv.get('amount')} {str(inv.get('currency') or '').upper()}".strip(),
@@ -298,13 +308,17 @@ def invoice_payload(inv: dict) -> dict:
     if not pay_to:
         out["error"] = "invoice has no payout address"
         return out
+    out["pay_to"] = pay_to
+    if status not in PAYABLE_STATUSES:
+        out["payable"] = False
+        return out
+    out["payable"] = True
     try:
         req = x402.create_payment_request(inv, pay_to)
     except (ValueError, KeyError, RuntimeError) as exc:
         out["error"] = f"cannot price this invoice: {exc}"
         return out
     out.update({
-        "pay_to": pay_to,
         "settle_amount": f"{req['amount_display']} {req['symbol']}",
         "amount_display": req["amount_display"],
         "symbol": req["symbol"],

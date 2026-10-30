@@ -43,6 +43,21 @@ def _save(db: dict) -> None:
     os.replace(tmp, STORE_PATH)
 
 
+def _refresh_claims(db: dict) -> None:
+    """Keep the public snapshot in step with the store it was exported from.
+
+    Best-effort on purpose: a failed snapshot write must never unpick a
+    settlement. The daily audit reads this file, so a stale snapshot is the one
+    failure mode worth avoiding — it would let the README claim a payment that
+    the store no longer holds.
+    """
+    try:
+        from . import claims
+        claims.write(db)
+    except Exception as e:  # noqa: BLE001
+        print(f"[store] claims snapshot not refreshed: {type(e).__name__}: {e}", flush=True)
+
+
 # ------------------------------------------------------------------- payouts
 
 def set_wallet(user_id: int | str, address: str, asset: str | None = None) -> str:
@@ -262,6 +277,7 @@ def mark_settled(inv_id: str, tx_hash: str) -> dict | None:
     inv["status"] = "settled"
     inv["settlement_tx"] = tx_hash
     _save(db)
+    _refresh_claims(db)
     return inv
 
 
@@ -287,6 +303,7 @@ def unsettle(inv_id: str, *, reason: str) -> dict | None:
     db.setdefault("used_tx", {}).pop(
         str((inv["settlement_history"][-1] or {}).get("tx") or "").lower(), None)
     _save(db)
+    _refresh_claims(db)
     return inv
 
 

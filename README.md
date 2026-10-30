@@ -103,6 +103,17 @@ Each of these is enforced in code and has a test that fails without it:
 All real Celo mainnet transactions. `scripts/verify_settlements.py` re-derives the
 settlements, and a daily CI workflow runs it so none of this can quietly rot.
 
+The claims it checks are committed as [`claims.json`](claims.json): settled invoice id,
+amount, payout address and transaction hash — public fields only, no chat ids, no user
+sentences, nothing about a counterparty. The invoice store itself stays private and
+gitignored, which is why the workflow reads the snapshot instead: a fresh checkout has
+no store, and an audit that needs a file which is never present either crashes or checks
+nothing. `--require` closes the second hole, so an empty run fails instead of passing.
+
+```bash
+python scripts/verify_settlements.py --claims claims.json --require
+```
+
 | What | Transaction |
 |---|---|
 | ERC-8004 identity registered (`agentId 10005`) | [`0x9c101fb0…2b70`](https://celoscan.io/tx/0x9c101fb0dcbfeba0d95c0172b22c996bec949a4d908b4daeaf486c0cd12b2b70) |
@@ -166,18 +177,25 @@ bash scripts/publish_site.sh                 # rebuild + redeploy the public hos
 ## Tests
 
 ```bash
-python -m pytest            # 222 tests, offline: no network, no keys, no .env
+python -m pytest            # 246 tests, offline: no network, no keys, no .env
 python -m pytest -m network # live facilitator, Textile, agent402, Typesafe Jev
 python -m pytest -m live    # reads real Celo mainnet history
 ruff check .                # lint (E, F, W, I, B)
 ```
 
-The default run passes on a clean checkout with nothing configured: network- and
-key-dependent tests are marked and excluded by `pytest.ini`. CI runs exactly that, plus
-ruff, byte-compilation, a 75% coverage floor (currently 78%) and an advisory dependency
-audit. The densest tests are where silence costs money — every refusal path in
-`bot/verify.py`, the x402 spend budgets, the screening gate, and the public HTTP surface
-over a real socket.
+The default run passes on a clean checkout with nothing configured, and that is enforced
+rather than asserted: `pytest.ini` passes `--disable-socket`, so a test that quietly
+opens a connection fails here instead of passing on a laptop with wifi and hanging in a
+stranger's sandbox. Localhost stays open for the HTTP-surface tests, and anything marked
+`network` gets its sockets back. Adding that flag found two real leaks — a paid-call
+receipt verified against a live RPC, and a settle notification fired at
+`api.telegram.org` from a test — and one genuinely offline-broken path: a refused invoice
+page was priced (and so needed an FX fetch) before it could say "Dropped".
+
+CI runs exactly that, plus ruff, byte-compilation, a 75% coverage floor (currently 79%)
+and an advisory dependency audit. The densest tests are where silence costs money —
+every refusal path in `bot/verify.py`, the x402 spend budgets, the screening gate, and
+the public HTTP surface over a real socket.
 
 ## Tracks this targets
 

@@ -2,6 +2,11 @@ name: verify-claims
 
 # Re-derives every settlement claim from Celo and fails loudly if one stops
 # holding up. Badges are cheap; this is the check behind the numbers in the README.
+#
+# It reads the committed claims.json, not the invoice store: the store is private
+# and gitignored, so a fresh checkout has none — the job failed on a missing file
+# for exactly that reason. `--require` is the other half: an empty run is a
+# failure, so this cannot go green by finding nothing.
 on:
   schedule:
     - cron: "17 6 * * *"     # daily, once the store has had a day to settle
@@ -22,4 +27,4 @@ jobs:
           # Public, not a secret: the wallet that receives invoices.
           INVOICE_WALLET: "0x86E95581E41946ED84956433a8a9c836bCbA636c"
           CELO_RPC_URL: "https://forno.celo.org"
-        run: python scripts/verify_settlements.py
+        run: python scripts/verify_settlements.py --claims claims.json --require

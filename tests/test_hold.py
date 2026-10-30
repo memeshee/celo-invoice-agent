@@ -109,3 +109,46 @@ def test_dropped_invoice_page_refuses():
     store.drop(held["id"])
     html = serve.render_invoice(serve.invoice_payload(store.get(held["id"])))
     assert "Dropped" in html and "celo://wallet/pay" not in html
+
+
+def test_a_refused_page_never_needs_a_live_rate(monkeypatch):
+    """A page that refuses payment must not be priced.
+
+    Pricing a non-USD invoice fetches an FX rate, and that fetch ran on every
+    status: offline it failed, the payload carried `error`, and the page showed
+    "cannot price this invoice" instead of the real status — which is how this
+    test failed in a reviewer's sandbox while passing on a machine with wifi.
+    """
+    def explode(*_a, **_k):
+        raise AssertionError("a non-payable invoice must never be priced")
+
+    real = serve.x402.create_payment_request
+    monkeypatch.setattr(serve.x402, "create_payment_request", explode)
+
+    dropped = _held()
+    store.drop(dropped["id"])
+    settled = store.create({"amount": "10", "currency": "USD", "recipient": "Ana"},
+                           {"decision": "settle"}, creator="ana", payout_address=PAY_TO)
+    store.mark_settled(settled["id"], "0x" + "ab" * 32)
+    cases = {
+        "held for review": _held()["id"],
+        "Dropped": dropped["id"],
+        "Payment confirmed onchain.": settled["id"],
+    }
+    for expected, inv_id in cases.items():
+        inv = store.get(inv_id)
+        assert inv, inv_id
+        payload = serve.invoice_payload(inv)
+        assert payload["payable"] is False
+        assert "error" not in payload, payload.get("error")
+        html = serve.render_invoice(payload)
+        assert expected in html, (expected, inv_id)
+        assert "celo://wallet/pay" not in html and "ethereum:" not in html
+
+    # ... and an open invoice is still priced and still payable.
+    monkeypatch.setattr(serve.x402, "create_payment_request", real)
+    open_inv = store.create({"amount": "10", "currency": "USD", "recipient": "Ana"},
+                            {"decision": "settle"}, creator="ana", payout_address=PAY_TO)
+    open_row = store.get(open_inv["id"])
+    assert open_row
+    assert serve.invoice_payload(open_row)["payable"] is True
